@@ -181,7 +181,10 @@ export function isSafeTrackIndex(trackIndex: number): boolean {
 /**
  * Color metadata definitions
  */
-export const COLOR_CONFIG: Record<
+/**
+ * Color metadata definitions with safe proxy fallback
+ */
+const BASE_COLOR_CONFIG: Record<
   PlayerColor,
   {
     name: string;
@@ -235,3 +238,32 @@ export const COLOR_CONFIG: Record<
     darkHex: '#0369a1',
   },
 };
+
+export const COLOR_CONFIG: Record<
+  PlayerColor,
+  {
+    name: string;
+    bgClass: string;
+    textClass: string;
+    borderClass: string;
+    accentHex: string;
+    gradientHex: string;
+    lightHex: string;
+    darkHex: string;
+  }
+> = new Proxy(BASE_COLOR_CONFIG, {
+  get(target, prop) {
+    if (typeof prop === 'string' && prop in target) {
+      return target[prop as PlayerColor];
+    }
+    return target.red;
+  },
+});
+
+export const getColorConfig = (color?: string) => {
+  if (color && color in BASE_COLOR_CONFIG) {
+    return BASE_COLOR_CONFIG[color as PlayerColor];
+  }
+  return BASE_COLOR_CONFIG.red;
+};
+

@@ -26,13 +26,19 @@ export interface Player {
   rank?: number; // 1, 2, 3, 4 when completed
   hasWon: boolean;
   consecutiveSixes: number;
+  rating?: number;
 }
 
 export type GameMode = 'local_pass_play' | 'local_vs_bot' | 'online_multiplayer';
 
 export type GameStatus = 'waiting' | 'playing' | 'paused' | 'finished';
 
-export type BoardTheme = 'classic_wood' | 'modern_neon' | 'vibrant_carnival' | 'nordic_minimal';
+export type BoardTheme =
+  | 'classic_arrows'
+  | 'star_minimal'
+  | 'geometric_diamond'
+  | 'classic_wood'
+  | 'modern_neon';
 
 export interface GameState {
   roomId: string;
@@ -51,6 +57,8 @@ export interface GameState {
   lastMoveDescription?: string;
   consecutiveSixes: number;
   mustSelectToken: boolean;
+  isCompetitive?: boolean;
+  startedAt?: number;
 }
 
 export interface ChatMessage {
@@ -72,9 +80,128 @@ export interface FloatingReaction {
   y: number; // 0..100 percentage
 }
 
+// User Settings
+export interface UserSettings {
+  gameplay: {
+    animationSpeed: 'fast' | 'normal' | 'slow';
+    autoMoveSingleChoice: boolean;
+    confirmMoves: boolean;
+  };
+  audio: {
+    bgmEnabled: boolean;
+    bgmVolume: number;
+    sfxEnabled: boolean;
+    sfxVolume: number;
+    muteAll: boolean;
+  };
+  appearance: {
+    theme: 'dark' | 'light' | 'system';
+    boardTheme: BoardTheme;
+  };
+  privacy: {
+    onlineStatus: boolean;
+    allowFriendRequests: boolean;
+    allowGameInvites: boolean;
+  };
+  accessibility: {
+    reducedMotion: boolean;
+    largerText: boolean;
+    highContrast: boolean;
+  };
+}
+
+// Friend & Social Types
+export interface Friend {
+  id: string;
+  name: string;
+  avatar: string;
+  status: 'online' | 'in_game' | 'offline';
+  rating: number;
+  favoriteColor: PlayerColor;
+  lastSeen?: string;
+}
+
+export interface FriendRequest {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string;
+  rating: number;
+  timestamp: number;
+}
+
+// Notification System
+export interface NotificationItem {
+  id: string;
+  type: 'friend_request' | 'game_invite' | 'achievement' | 'reward' | 'friend_online' | 'tournament';
+  title: string;
+  message: string;
+  timestamp: number;
+  read: boolean;
+  actionData?: {
+    roomId?: string;
+    friendId?: string;
+    rewardXp?: number;
+  };
+}
+
+// Player Statistics
+export interface PlayerStats {
+  totalGames: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  totalCaptures: number;
+  gamesAbandoned: number;
+  currentRating: number;
+  highestRating: number;
+  currentLevel: number;
+  currentXp: number;
+  nextLevelXp: number;
+  favoriteGameMode: string;
+  recentForm: ('W' | 'L')[];
+}
+
+// Match History
+export interface MatchHistoryItem {
+  id: string;
+  date: string;
+  timestamp: number;
+  players: {
+    name: string;
+    avatar: string;
+    color: PlayerColor;
+    rating: number;
+    isUser: boolean;
+    isWinner: boolean;
+    rank: number;
+  }[];
+  winnerColor: PlayerColor;
+  winnerName: string;
+  gameMode: GameMode;
+  durationSeconds: number;
+  ratingChange: number;
+  result: 'VICTORY' | '2ND PLACE' | '3RD PLACE' | 'DEFEAT';
+  capturesMade: number;
+}
+
+// Leaderboard
+export interface LeaderboardEntry {
+  rank: number;
+  id: string;
+  name: string;
+  avatar: string;
+  rating: number;
+  wins: number;
+  winRate: number;
+  xp: number;
+  gamesPlayed: number;
+  isCurrentUser?: boolean;
+}
+
 // WebSocket message protocols
 export type WSClientAction =
-  | { type: 'CREATE_ROOM'; payload: { hostName: string; avatar: string; color: PlayerColor; maxPlayers: number; turnTimeLimit: number; withBots: boolean } }
+  | { type: 'CREATE_ROOM'; payload: { hostName: string; avatar: string; color: PlayerColor; maxPlayers: number; turnTimeLimit: number; withBots: boolean; isCompetitive?: boolean } }
   | { type: 'JOIN_ROOM'; payload: { roomId: string; playerName: string; avatar: string; preferredColor?: PlayerColor } }
   | { type: 'START_GAME'; payload: { roomId: string } }
   | { type: 'ROLL_DICE'; payload: { roomId: string } }
@@ -96,3 +223,4 @@ export type WSServerAction =
   | { type: 'EMOJI_REACTION'; payload: FloatingReaction }
   | { type: 'PLAYER_DISCONNECTED'; payload: { playerId: string; name: string } }
   | { type: 'ERROR'; payload: { message: string } };
+

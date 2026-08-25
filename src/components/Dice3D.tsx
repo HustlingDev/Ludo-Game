@@ -22,7 +22,7 @@ export const Dice3D: React.FC<Dice3DProps> = ({
   consecutiveSixes,
   onRoll,
 }) => {
-  const config = COLOR_CONFIG[activeColor];
+  const config = (activeColor && COLOR_CONFIG[activeColor]) || COLOR_CONFIG.red;
 
   // Helper to render pips on the dice face
   const renderPips = (val: number) => {

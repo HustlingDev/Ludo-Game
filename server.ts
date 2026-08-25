@@ -3,6 +3,8 @@ import path from 'path';
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
+import apiRouter from './server/api.js';
+
 import {
   GameState,
   Player,
@@ -235,10 +237,8 @@ async function startServer() {
 
   app.use(express.json());
 
-  // API Routes
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', time: Date.now() });
-  });
+  // Platform & Economics API Routes
+  app.use('/api', apiRouter);
 
   app.get('/api/rooms/public', (req, res) => {
     const publicRooms = Array.from(rooms.values())

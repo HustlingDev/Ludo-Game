@@ -43,7 +43,7 @@ export const ChatAndReactions: React.FC<ChatAndReactionsProps> = ({
       {/* Floating Reaction Particles Overlay */}
       <div className="fixed inset-0 pointer-events-none z-40 overflow-hidden">
         {reactions.map((r) => {
-          const cfg = COLOR_CONFIG[r.senderColor];
+          const cfg = (r.senderColor && COLOR_CONFIG[r.senderColor]) || COLOR_CONFIG.red;
           return (
             <div
               key={r.id}

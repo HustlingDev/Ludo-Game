@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "games": {
+      "$gameId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (data.val() == null || data.child('players/' + auth.uid).exists() || auth.token.admin === true)"
+      }
+    },
+    "presence": {
+      "$userId": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $userId"
+      }
+    },
+    "matchmakingQueue": {
+      "$queueId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}

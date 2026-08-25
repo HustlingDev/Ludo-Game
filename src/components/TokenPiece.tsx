@@ -31,7 +31,7 @@ export const TokenPiece: React.FC<TokenPieceProps> = ({
   onMouseEnter,
   onMouseLeave,
 }) => {
-  const config = COLOR_CONFIG[color];
+  const config = (color && COLOR_CONFIG[color]) || COLOR_CONFIG.red;
 
   // Offset stacking when multiple tokens share a spot
   const getStackOffset = () => {

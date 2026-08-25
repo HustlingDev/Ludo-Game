@@ -1,0 +1,170 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profiles",
+      "description": "User profiles including username, rating, statistics and responsible gaming limits",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "avatar": { "type": "string" },
+        "level": { "type": "number" },
+        "xp": { "type": "number" },
+        "rating": { "type": "number" },
+        "gamesPlayed": { "type": "number" },
+        "gamesWon": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "suspended", "self_excluded"] },
+        "eligibilityStatus": { "type": "string", "enum": ["unverified", "pending", "verified", "restricted"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "username", "createdAt", "status"]
+    },
+    "wallets": {
+      "title": "UGX Wallets",
+      "description": "Server-authoritative UGX internal wallets with integer balances",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "availableBalance": { "type": "number" },
+        "lockedBalance": { "type": "number" },
+        "currency": { "type": "string", "enum": ["UGX"] },
+        "status": { "type": "string", "enum": ["active", "locked", "frozen"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "availableBalance", "lockedBalance", "currency", "status"]
+    },
+    "walletTransactions": {
+      "title": "Immutable Wallet Ledger",
+      "description": "Immutable ledger records for all deposit, stake lock, prize, fee, and withdrawal transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["deposit", "gameEntry", "gamePrize", "platformFee", "refund", "withdrawal", "adjustment"] },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["UGX"] },
+        "reference": { "type": "string" },
+        "gameId": { "type": "string" },
+        "depositId": { "type": "string" },
+        "withdrawalId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed", "reversed"] },
+        "createdAt": { "type": "number" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["id", "userId", "type", "amount", "currency", "reference", "status", "createdAt"]
+    },
+    "deposits": {
+      "title": "Pesapal Deposits",
+      "description": "Pesapal 3.0 payments tracking records with tracking IDs and verification states",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "merchantReference": { "type": "string" },
+        "pesapalOrderTrackingId": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["UGX"] },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed", "cancelled", "reversed"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "completedAt": { "type": "number" },
+        "failureReason": { "type": "string" }
+      },
+      "required": ["id", "userId", "merchantReference", "amount", "currency", "status", "createdAt"]
+    },
+    "withdrawals": {
+      "title": "Withdrawals",
+      "description": "KYC-governed payout requests",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["UGX"] },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed", "cancelled", "reversed"] },
+        "payoutMethod": { "type": "string" },
+        "payoutAccount": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "completedAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "amount", "currency", "status", "createdAt"]
+    },
+    "games": {
+      "title": "Games Persistent Records",
+      "description": "Firestore records of completed and active Ludo games with players, stakes, and outcome",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "mode": { "type": "string", "enum": ["free_play", "1v1", "4_player", "private_room", "vs_bot"] },
+        "stake": { "type": "number" },
+        "currency": { "type": "string", "enum": ["UGX"] },
+        "status": { "type": "string", "enum": ["waiting", "playing", "finished", "cancelled", "settled"] },
+        "createdAt": { "type": "number" },
+        "startedAt": { "type": "number" },
+        "endedAt": { "type": "number" },
+        "winnerId": { "type": "string" },
+        "winnerColor": { "type": "string" },
+        "potAmount": { "type": "number" },
+        "platformFee": { "type": "number" },
+        "prizeAmount": { "type": "number" },
+        "settlementId": { "type": "string" }
+      },
+      "required": ["id", "mode", "stake", "status", "createdAt"]
+    },
+    "gameSettlements": {
+      "title": "Game Settlements",
+      "description": "Server-side idempotent financial settlements for prize distribution and platform fees",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "gameId": { "type": "string" },
+        "winnerId": { "type": "string" },
+        "totalPot": { "type": "number" },
+        "platformFee": { "type": "number" },
+        "prizeAmount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["UGX"] },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed", "reversed"] },
+        "createdAt": { "type": "number" },
+        "completedAt": { "type": "number" }
+      },
+      "required": ["id", "gameId", "winnerId", "totalPot", "platformFee", "prizeAmount", "currency", "status", "createdAt"]
+    },
+    "responsibleGaming": {
+      "title": "Responsible Gaming Limits",
+      "description": "Player limits for deposits, session timers, and cooling-off intervals",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dailyDepositLimit": { "type": "number" },
+        "weeklyDepositLimit": { "type": "number" },
+        "lossLimit": { "type": "number" },
+        "sessionTimeLimitMinutes": { "type": "number" },
+        "selfExcludedUntil": { "type": "number" },
+        "coolingOffUntil": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "updatedAt"]
+    },
+    "auditLogs": {
+      "title": "System Audit Logs",
+      "description": "Immutable security and accounting audit trail",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "actorId": { "type": "string" },
+        "action": { "type": "string" },
+        "entity": { "type": "string" },
+        "entityId": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["id", "actorId", "action", "entity", "entityId", "timestamp"]
+    }
+  }
+}

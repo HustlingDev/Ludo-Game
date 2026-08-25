@@ -13,6 +13,17 @@ import { LobbyModal } from './components/LobbyModal';
 import { RulesModal } from './components/RulesModal';
 import { VictoryModal } from './components/VictoryModal';
 import { ChatAndReactions } from './components/ChatAndReactions';
+import { SettingsModal } from './components/SettingsModal';
+import { FriendsModal } from './components/FriendsModal';
+import { StatsModal } from './components/StatsModal';
+import { HistoryModal } from './components/HistoryModal';
+import { LeaderboardModal } from './components/LeaderboardModal';
+import { NotificationsModal } from './components/NotificationsModal';
+import { WalletModal } from './components/WalletModal';
+import { AuthModal } from './components/AuthModal';
+import { BottomNav } from './components/BottomNav';
+
+import { ErrorToast } from './components/ErrorToast';
 import { COLOR_CONFIG } from './utils/boardCoordinates';
 import {
   Users,
@@ -21,25 +32,29 @@ import {
   UserPlus,
   Trash2,
   Copy,
-  Check,
   Flame,
   AlertCircle,
   HelpCircle,
 } from 'lucide-react';
+import { sounds } from './utils/audio';
 
 export default function App() {
   const {
     gameState,
     profile,
     setProfile,
-    theme,
-    setTheme,
-    soundMuted,
-    setSoundMuted,
-    isLobbyOpen,
-    setIsLobbyOpen,
-    isRulesOpen,
-    setIsRulesOpen,
+    settings,
+    setSettings,
+    stats,
+    history,
+    friends,
+    pendingRequests,
+    notifications,
+    leaderboard,
+    toasts,
+    dismissToast,
+    activeModal,
+    setActiveModal,
     isChatOpen,
     setIsChatOpen,
     chatMessages,
@@ -52,20 +67,26 @@ export default function App() {
     isRollingAnimation,
     handleRollDice,
     handleMoveToken,
-    startLocalGame,
-    createOnlineRoom,
-    joinOnlineRoom,
-    startOnlineGame,
-    addBotToRoom,
-    removeBotFromRoom,
-    sendChatMessage,
-    sendEmojiReaction,
-    restartGame,
-    leaveGame,
+    handleStartLocalGame,
+    handleCreateOnlineRoom,
+    handleJoinOnlineRoom,
+    handleSendFriendRequest,
+    handleAcceptFriendRequest,
+    handleRejectFriendRequest,
+    handleRemoveFriend,
+    handleInviteFriendToGame,
+    handleMarkAllNotificationsRead,
+    handleClearAllNotifications,
+    handleNotificationAction,
+    handleSendChat,
+    handleSendEmoji,
   } = useLudoGame();
 
-  const activeColor = gameState.activeColors[gameState.activeColorIndex];
-  const activePlayer = gameState.players.find((p) => p.color === activeColor);
+  const activeColor =
+    gameState.activeColors?.[gameState.activeColorIndex] ||
+    gameState.players?.[0]?.color ||
+    'red';
+  const activePlayer = gameState.players?.find((p) => p.color === activeColor);
   const activeConfig = COLOR_CONFIG[activeColor] || COLOR_CONFIG.red;
 
   const isMyTurn =
@@ -76,18 +97,49 @@ export default function App() {
   const hostPlayer = gameState.players.find((p) => p.isHost);
   const isHost = gameState.mode === 'online_multiplayer' ? hostPlayer?.id === myPlayerId : true;
 
+  const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none overflow-x-hidden">
+    <div
+      className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none overflow-x-hidden pb-16 sm:pb-4 ${
+        settings.accessibility.highContrast ? 'contrast-125' : ''
+      }`}
+    >
+      {/* Toast notifications */}
+      <ErrorToast toasts={toasts} onDismiss={dismissToast} />
+
       {/* Top Navbar */}
       <Header
         gameState={gameState}
-        theme={theme}
-        setTheme={setTheme}
-        soundMuted={soundMuted}
-        setSoundMuted={setSoundMuted}
-        onOpenRules={() => setIsRulesOpen(true)}
+        theme={settings.appearance.boardTheme}
+        setTheme={(t) =>
+          setSettings({
+            ...settings,
+            appearance: { ...settings.appearance, boardTheme: t },
+          })
+        }
+        soundMuted={settings.audio.muteAll}
+        setSoundMuted={(m) =>
+          setSettings({
+            ...settings,
+            audio: { ...settings.audio, muteAll: m },
+          })
+        }
+        userRating={profile.rating}
+        userName={profile.name}
+        pendingRequestsCount={pendingRequests.length}
+        unreadNotificationsCount={unreadNotificationsCount}
+        onOpenRules={() => setActiveModal('rules')}
         onToggleChat={() => setIsChatOpen(!isChatOpen)}
-        onOpenLobby={() => setIsLobbyOpen(true)}
+        onOpenLobby={() => setActiveModal('lobby')}
+        onOpenFriends={() => setActiveModal('friends')}
+        onOpenLeaderboard={() => setActiveModal('leaderboard')}
+        onOpenStats={() => setActiveModal('stats')}
+        onOpenHistory={() => setActiveModal('history')}
+        onOpenSettings={() => setActiveModal('settings')}
+        onOpenNotifications={() => setActiveModal('notifications')}
+        onOpenWallet={() => setActiveModal('wallet')}
+        onOpenAuth={() => setActiveModal('auth')}
       />
 
       {/* Main Game Container */}
@@ -121,7 +173,7 @@ export default function App() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(gameState.roomId);
-                  alert(`Copied room code: ${gameState.roomId}`);
+                  sounds.playButton();
                 }}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white rounded-xl border border-slate-700 flex items-center gap-1.5 transition"
               >
@@ -156,33 +208,19 @@ export default function App() {
                         <span className="font-bold text-xs text-white truncate max-w-[90px]">
                           {player.name}
                         </span>
-                        <span className="text-[10px] capitalize font-medium" style={{ color: cfg.accentHex }}>
+                        <span
+                          className="text-[10px] capitalize font-medium"
+                          style={{ color: cfg.accentHex }}
+                        >
                           {player.type === 'bot' ? '🤖 Bot' : player.isHost ? '👑 Host' : 'Player'}
                         </span>
-                        {isHost && player.type === 'bot' && (
-                          <button
-                            onClick={() => removeBotFromRoom(color)}
-                            className="text-rose-400 hover:text-rose-300 p-0.5 text-[10px] flex items-center gap-0.5"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            <span>Remove</span>
-                          </button>
-                        )}
                       </>
                     ) : (
                       <>
                         <span className="text-xs text-slate-500 font-medium capitalize">
                           {cfg.name} Slot
                         </span>
-                        {isHost && (
-                          <button
-                            onClick={() => addBotToRoom(color)}
-                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg text-[11px] font-bold flex items-center gap-1 border border-slate-700 transition"
-                          >
-                            <UserPlus className="w-3 h-3" />
-                            <span>Add Bot</span>
-                          </button>
-                        )}
+                        <span className="text-[10px] text-slate-600">Empty</span>
                       </>
                     )}
                   </div>
@@ -193,7 +231,19 @@ export default function App() {
             {/* Start Button (Host only) */}
             {isHost ? (
               <button
-                onClick={startOnlineGame}
+                onClick={() => {
+                  sounds.playButton();
+                  handleStartLocalGame(
+                    'local_pass_play',
+                    gameState.players.map((p) => ({
+                      name: p.name,
+                      avatar: p.avatar,
+                      color: p.color,
+                      type: p.type,
+                      botDifficulty: p.botDifficulty,
+                    }))
+                  );
+                }}
                 className="w-full max-w-sm py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-sm shadow-xl shadow-sky-500/25 transition flex items-center justify-center gap-2"
               >
                 <Play className="w-4 h-4 fill-white" />
@@ -208,9 +258,9 @@ export default function App() {
           </div>
         ) : (
           /* Active Playing Board Layout */
-          <div className="w-full flex flex-col lg:flex-row items-center justify-center gap-4 sm:gap-6">
-            {/* Left Player Column (Desktop) */}
-            <div className="w-full lg:w-60 flex lg:flex-col gap-2.5 justify-between order-2 lg:order-1">
+          <div className="w-full flex flex-col lg:flex-row items-center justify-center gap-3 sm:gap-6">
+            {/* Left Player Column */}
+            <div className="w-full lg:w-56 flex lg:flex-col gap-2 justify-between order-2 lg:order-1">
               <div className="flex-1 lg:flex-none">
                 <PlayerCard
                   player={gameState.players.find((p) => p.color === 'red')}
@@ -233,9 +283,9 @@ export default function App() {
               </div>
             </div>
 
-            {/* Center: Interactive Board & Turn Action Hub */}
-            <div className="flex flex-col items-center gap-3 sm:gap-4 order-1 lg:order-2 w-full max-w-[540px]">
-              {/* Turn Banner & Narration Status */}
+            {/* Center: Interactive Board & Action Bar */}
+            <div className="flex flex-col items-center gap-2.5 sm:gap-4 order-1 lg:order-2 w-full max-w-[530px]">
+              {/* Turn Banner & Status */}
               <div className="w-full bg-slate-900/80 backdrop-blur-md border border-slate-800 p-2.5 rounded-2xl shadow-lg flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div
@@ -280,7 +330,7 @@ export default function App() {
               <GameBoard
                 gameState={gameState}
                 myPlayerId={myPlayerId}
-                theme={theme}
+                theme={settings.appearance.boardTheme}
                 draggedTokenId={draggedTokenId}
                 hoveredTokenId={hoveredTokenId}
                 setDraggedTokenId={setDraggedTokenId}
@@ -288,8 +338,8 @@ export default function App() {
                 onMoveToken={handleMoveToken}
               />
 
-              {/* Interactive Dice & Drag Control Bar */}
-              <div className="w-full bg-slate-900/90 backdrop-blur-md border border-slate-800/90 rounded-3xl p-3 sm:p-4 shadow-2xl flex items-center justify-around gap-3">
+              {/* Interactive 3D Dice and Guidance Bar */}
+              <div className="w-full bg-slate-900/90 backdrop-blur-md border border-slate-800/90 rounded-3xl p-2.5 sm:p-4 shadow-2xl flex items-center justify-around gap-2 sm:gap-3">
                 {/* 3D Dice and Roll Button */}
                 <Dice3D
                   value={gameState.diceValue}
@@ -315,15 +365,15 @@ export default function App() {
                     ) : gameState.canRoll && isMyTurn ? (
                       <span>Roll the dice by tapping the cube or Roll button above!</span>
                     ) : (
-                      <span>Waiting for {activePlayer?.name} to complete their turn...</span>
+                      <span>Waiting for {activePlayer?.name} to finish turn...</span>
                     )}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Right Player Column (Desktop) */}
-            <div className="w-full lg:w-60 flex lg:flex-col gap-2.5 justify-between order-3">
+            {/* Right Player Column */}
+            <div className="w-full lg:w-56 flex lg:flex-col gap-2 justify-between order-3">
               <div className="flex-1 lg:flex-none">
                 <PlayerCard
                   player={gameState.players.find((p) => p.color === 'green')}
@@ -349,25 +399,94 @@ export default function App() {
         )}
       </main>
 
-      {/* Modals & Overlays */}
-      <LobbyModal
-        isOpen={isLobbyOpen}
-        profile={profile}
-        setProfile={setProfile}
-        theme={theme}
-        setTheme={setTheme}
-        onClose={() => setIsLobbyOpen(false)}
-        onStartLocalGame={startLocalGame}
-        onCreateOnlineRoom={createOnlineRoom}
-        onJoinOnlineRoom={joinOnlineRoom}
+      {/* Mobile Bottom Navigation Dock */}
+      <BottomNav
+        activeModal={activeModal}
+        pendingRequestsCount={pendingRequests.length}
+        unreadNotificationsCount={unreadNotificationsCount}
+        onOpenLobby={() => setActiveModal('lobby')}
+        onOpenFriends={() => setActiveModal('friends')}
+        onOpenLeaderboard={() => setActiveModal('leaderboard')}
+        onOpenStats={() => setActiveModal('stats')}
+        onOpenHistory={() => setActiveModal('history')}
+        onOpenSettings={() => setActiveModal('settings')}
+        onOpenNotifications={() => setActiveModal('notifications')}
       />
 
-      <RulesModal isOpen={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
+      {/* Modals & Overlays */}
+      <LobbyModal
+        isOpen={activeModal === 'lobby'}
+        profile={profile}
+        setProfile={setProfile}
+        theme={settings.appearance.boardTheme}
+        setTheme={(t) =>
+          setSettings({
+            ...settings,
+            appearance: { ...settings.appearance, boardTheme: t },
+          })
+        }
+        onClose={() => setActiveModal(null)}
+        onStartLocalGame={handleStartLocalGame}
+        onCreateOnlineRoom={handleCreateOnlineRoom}
+        onJoinOnlineRoom={handleJoinOnlineRoom}
+      />
+
+      <SettingsModal
+        isOpen={activeModal === 'settings'}
+        onClose={() => setActiveModal(null)}
+        settings={settings}
+        onUpdateSettings={setSettings}
+      />
+
+      <FriendsModal
+        isOpen={activeModal === 'friends'}
+        onClose={() => setActiveModal(null)}
+        friends={friends}
+        pendingRequests={pendingRequests}
+        onSendRequest={handleSendFriendRequest}
+        onAcceptRequest={handleAcceptFriendRequest}
+        onRejectRequest={handleRejectFriendRequest}
+        onRemoveFriend={handleRemoveFriend}
+        onInviteFriendToGame={handleInviteFriendToGame}
+      />
+
+      <StatsModal
+        isOpen={activeModal === 'stats'}
+        onClose={() => setActiveModal(null)}
+        stats={stats}
+        userName={profile.name}
+        avatar={profile.avatar}
+      />
+
+      <HistoryModal
+        isOpen={activeModal === 'history'}
+        onClose={() => setActiveModal(null)}
+        history={history}
+      />
+
+      <LeaderboardModal
+        isOpen={activeModal === 'leaderboard'}
+        onClose={() => setActiveModal(null)}
+        entries={leaderboard}
+        currentUserRating={profile.rating}
+        currentUserName={profile.name}
+      />
+
+      <NotificationsModal
+        isOpen={activeModal === 'notifications'}
+        onClose={() => setActiveModal(null)}
+        notifications={notifications}
+        onMarkAllAsRead={handleMarkAllNotificationsRead}
+        onClearAll={handleClearAllNotifications}
+        onActionClick={handleNotificationAction}
+      />
+
+      <RulesModal isOpen={activeModal === 'rules'} onClose={() => setActiveModal(null)} />
 
       <VictoryModal
         gameState={gameState}
-        onRestart={restartGame}
-        onLeaveToLobby={leaveGame}
+        onRestart={() => setActiveModal('lobby')}
+        onLeaveToLobby={() => setActiveModal('lobby')}
       />
 
       <ChatAndReactions
@@ -375,8 +494,18 @@ export default function App() {
         onClose={() => setIsChatOpen(false)}
         messages={chatMessages}
         reactions={reactions}
-        onSendMessage={sendChatMessage}
-        onSendEmoji={sendEmojiReaction}
+        onSendMessage={handleSendChat}
+        onSendEmoji={handleSendEmoji}
+      />
+
+      <WalletModal
+        isOpen={activeModal === 'wallet'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <AuthModal
+        isOpen={activeModal === 'auth'}
+        onClose={() => setActiveModal(null)}
       />
     </div>
   );

@@ -154,16 +154,17 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
 
           {/* Theme Quick Toggle */}
           <div className="flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-700">
-            <span className="text-xs text-slate-400 font-medium mr-1">Theme:</span>
+            <span className="text-xs text-slate-400 font-medium mr-1">Template:</span>
             <select
               value={theme}
               onChange={(e) => setTheme(e.target.value as BoardTheme)}
               className="bg-transparent text-xs font-bold text-amber-400 focus:outline-none cursor-pointer"
             >
+              <option value="classic_arrows" className="bg-slate-900 text-white">Classic Arrows</option>
+              <option value="star_minimal" className="bg-slate-900 text-white">Star Minimal</option>
+              <option value="geometric_diamond" className="bg-slate-900 text-white">Retro Diamond</option>
               <option value="classic_wood" className="bg-slate-900 text-white">Classic Wood</option>
               <option value="modern_neon" className="bg-slate-900 text-white">Modern Neon</option>
-              <option value="vibrant_carnival" className="bg-slate-900 text-white">Carnival</option>
-              <option value="nordic_minimal" className="bg-slate-900 text-white">Nordic Minimal</option>
             </select>
           </div>
         </div>
@@ -467,9 +468,9 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
                 </div>
 
                 <div className="space-y-2 pt-2 border-t border-slate-700/60">
-                  {Array.from({ length: localPlayerCount }).map((_, idx) => {
-                    const col = ALL_COLORS[idx];
-                    const cfg = COLOR_CONFIG[col];
+                  {Array.from({ length: Math.min(localPlayerCount, 4) }).map((_, idx) => {
+                    const col = ALL_COLORS[idx] || 'red';
+                    const cfg = COLOR_CONFIG[col] || COLOR_CONFIG.red;
                     return (
                       <div
                         key={`local-p-${idx}`}

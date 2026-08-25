@@ -47,7 +47,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
         <div className="w-full space-y-2 mb-6">
           {winnerOrder.map((color, idx) => {
             const player = gameState.players.find((p) => p.color === color);
-            const cfg = COLOR_CONFIG[color];
+            const cfg = (color && COLOR_CONFIG[color]) || COLOR_CONFIG.red;
             if (!player) return null;
 
             const medals = ['🥇', '🥈', '🥉', '4th'];

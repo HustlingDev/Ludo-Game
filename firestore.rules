@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.role == 'admin' ||
+         request.auth.token.admin == true ||
+         request.auth.token.role == 'super_admin');
+    }
+
+    // User profiles: users can read public info, edit own profile (except status/eligibility)
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'eligibilityStatus', 'rating', 'xp', 'level'])
+        || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Wallets: Strict server-only mutation. Read-only for owner.
+    match /wallets/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if false; // Only server (Admin SDK / Cloud Functions) can credit/debit
+    }
+
+    // Wallet Ledger Transactions: Read-only for owner.
+    match /walletTransactions/{transactionId} {
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow write: if false; // Only server can record transactions
+    }
+
+    // Pesapal Deposits: Read-only for owner.
+    match /deposits/{depositId} {
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow write: if false; // Handled by server IPN & order endpoints
+    }
+
+    // Withdrawals: Read-only for owner.
+    match /withdrawals/{withdrawalId} {
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // Games: Public read for match participants/observers. Write via server functions.
+    match /games/{gameId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // Game settlements: Read-only for winner or participants.
+    match /gameSettlements/{settlementId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // Responsible gaming: Users can read and set their limits (within policy).
+    match /responsibleGaming/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    // Audit logs: Read-only for Admins. No user write.
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

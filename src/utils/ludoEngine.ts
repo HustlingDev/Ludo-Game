@@ -482,3 +482,49 @@ export function selectBestBotMove(
 
   return bestTokenId;
 }
+
+/**
+ * Calculates ELO Rating changes after a match
+ */
+export function calculateEloChange(
+  playerRating: number,
+  opponentsRatings: number[],
+  playerRank: number,
+  totalPlayers: number,
+  isCompetitive: boolean = true
+): number {
+  if (!isCompetitive || opponentsRatings.length === 0) return 0;
+
+  const avgOpponentRating =
+    opponentsRatings.reduce((a, b) => a + b, 0) / opponentsRatings.length;
+  const actualScoresByRank: Record<number, number> = {
+    1: 1.0,
+    2: totalPlayers >= 3 ? 0.6 : 0.0,
+    3: 0.3,
+    4: 0.0,
+  };
+  const actualScore = actualScoresByRank[playerRank] ?? 0.0;
+  const expectedScore =
+    1 / (1 + Math.pow(10, (avgOpponentRating - playerRating) / 400));
+  const kFactor = 32;
+  const change = Math.round(kFactor * (actualScore - expectedScore));
+  return change;
+}
+
+/**
+ * Calculates XP gained from a completed match
+ */
+export function calculateXpGain(
+  rank: number,
+  captures: number,
+  gameMode: GameMode
+): number {
+  let xp = 50;
+  if (rank === 1) xp += 150;
+  else if (rank === 2) xp += 75;
+  else if (rank === 3) xp += 40;
+  xp += captures * 25;
+  if (gameMode === 'online_multiplayer') xp = Math.round(xp * 1.5);
+  return xp;
+}
+

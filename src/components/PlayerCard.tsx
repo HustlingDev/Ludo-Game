@@ -21,7 +21,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
   timeRemaining,
   timeLimit,
 }) => {
-  const config = COLOR_CONFIG[color];
+  const config = (color && COLOR_CONFIG[color]) || COLOR_CONFIG.red;
 
   if (!player) {
     return (
