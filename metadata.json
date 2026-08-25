@@ -1,0 +1,6 @@
+{
+  "name": "Ludo Real-Time Multiplayer",
+  "description": "Real-time multiplayer Ludo board game featuring live room multiplayer, local pass-and-play, smart AI bots, intuitive drag-and-drop and click-to-move token controls, animated dice rolling, and sound effects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
