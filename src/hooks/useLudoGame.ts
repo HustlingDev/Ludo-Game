@@ -56,7 +56,7 @@ const DEFAULT_PROFILE: UserProfile = {
 const DEFAULT_SETTINGS: UserSettings = {
   gameplay: {
     animationSpeed: 'normal',
-    autoMoveSingleChoice: true,
+    autoMoveSingleChoice: false,
     confirmMoves: false,
   },
   audio: {
@@ -83,105 +83,26 @@ const DEFAULT_SETTINGS: UserSettings = {
 };
 
 const DEFAULT_STATS: PlayerStats = {
-  totalGames: 14,
-  wins: 9,
-  losses: 5,
-  winRate: 64,
-  totalCaptures: 28,
+  totalGames: 0,
+  wins: 0,
+  losses: 0,
+  winRate: 0,
+  totalCaptures: 0,
   gamesAbandoned: 0,
   currentRating: 1200,
-  highestRating: 1248,
-  currentLevel: 4,
-  currentXp: 380,
-  nextLevelXp: 600,
-  favoriteGameMode: 'local_vs_bot',
-  recentForm: ['W', 'W', 'L', 'W', 'W'],
+  highestRating: 1200,
+  currentLevel: 1,
+  currentXp: 0,
+  nextLevelXp: 500,
+  favoriteGameMode: 'online_multiplayer',
+  recentForm: [],
 };
 
-const DEFAULT_FRIENDS: Friend[] = [
-  {
-    id: 'f1',
-    name: 'MasterDice',
-    avatar: '🐉',
-    status: 'online',
-    rating: 1350,
-    favoriteColor: 'green',
-  },
-  {
-    id: 'f2',
-    name: 'StarRunner',
-    avatar: '🚀',
-    status: 'in_game',
-    rating: 1280,
-    favoriteColor: 'yellow',
-  },
-  {
-    id: 'f3',
-    name: 'CyberKing',
-    avatar: '⚡',
-    status: 'offline',
-    rating: 1190,
-    favoriteColor: 'blue',
-    lastSeen: '2h ago',
-  },
-  {
-    id: 'f4',
-    name: 'RoyalPawn',
-    avatar: '👑',
-    status: 'online',
-    rating: 1410,
-    favoriteColor: 'red',
-  },
-];
+const DEFAULT_FRIENDS: Friend[] = [];
 
-const DEFAULT_HISTORY: MatchHistoryItem[] = [
-  {
-    id: 'm1',
-    date: 'Today, 2:40 PM',
-    timestamp: Date.now() - 3600000,
-    players: [
-      { name: 'You', avatar: '👑', color: 'red', rating: 1200, isUser: true, isWinner: true, rank: 1 },
-      { name: 'Bot Green', avatar: '🤖', color: 'green', rating: 1180, isUser: false, isWinner: false, rank: 2 },
-      { name: 'Bot Yellow', avatar: '🤖', color: 'yellow', rating: 1190, isUser: false, isWinner: false, rank: 3 },
-      { name: 'Bot Blue', avatar: '🤖', color: 'blue', rating: 1210, isUser: false, isWinner: false, rank: 4 },
-    ],
-    winnerColor: 'red',
-    winnerName: 'You',
-    gameMode: 'local_vs_bot',
-    durationSeconds: 340,
-    ratingChange: 18,
-    result: 'VICTORY',
-    capturesMade: 3,
-  },
-  {
-    id: 'm2',
-    date: 'Yesterday, 8:15 PM',
-    timestamp: Date.now() - 86400000,
-    players: [
-      { name: 'MasterDice', avatar: '🐉', color: 'green', rating: 1340, isUser: false, isWinner: true, rank: 1 },
-      { name: 'You', avatar: '👑', color: 'red', rating: 1182, isUser: true, isWinner: false, rank: 2 },
-      { name: 'StarRunner', avatar: '🚀', color: 'yellow', rating: 1270, isUser: false, isWinner: false, rank: 3 },
-      { name: 'CyberBot', avatar: '🤖', color: 'blue', rating: 1150, isUser: false, isWinner: false, rank: 4 },
-    ],
-    winnerColor: 'green',
-    winnerName: 'MasterDice',
-    gameMode: 'online_multiplayer',
-    durationSeconds: 490,
-    ratingChange: -12,
-    result: '2ND PLACE',
-    capturesMade: 1,
-  },
-];
+const DEFAULT_HISTORY: MatchHistoryItem[] = [];
 
-const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, id: 'u1', name: 'GrandMaster_Ludo', avatar: '👑', rating: 1890, wins: 142, winRate: 78, xp: 12500, gamesPlayed: 182 },
-  { rank: 2, id: 'u2', name: 'PhoenixReign', avatar: '🔥', rating: 1765, wins: 115, winRate: 72, xp: 9800, gamesPlayed: 160 },
-  { rank: 3, id: 'u3', name: 'DragonKnight', avatar: '🐉', rating: 1680, wins: 98, winRate: 68, xp: 8200, gamesPlayed: 144 },
-  { rank: 4, id: 'u4', name: 'StarRunner', avatar: '🚀', rating: 1540, wins: 84, winRate: 65, xp: 6900, gamesPlayed: 129 },
-  { rank: 5, id: 'u5', name: 'RoyalPawn', avatar: '💎', rating: 1410, wins: 62, winRate: 61, xp: 5100, gamesPlayed: 101 },
-  { rank: 6, id: 'u6', name: 'MasterDice', avatar: '🎯', rating: 1350, wins: 54, winRate: 58, xp: 4400, gamesPlayed: 93 },
-  { rank: 7, id: 'u_current', name: 'You', avatar: '👑', rating: 1200, wins: 9, winRate: 64, xp: 380, gamesPlayed: 14, isCurrentUser: true },
-];
+const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [];
 
 export function useLudoGame() {
   const [profile, setProfile] = useState<UserProfile>(() => {
@@ -232,18 +153,7 @@ export function useLudoGame() {
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_REQUESTS);
-      return saved
-        ? JSON.parse(saved)
-        : [
-            {
-              id: 'req_1',
-              senderId: 'u_req1',
-              senderName: 'LudoTitan',
-              senderAvatar: '🦁',
-              rating: 1260,
-              timestamp: Date.now() - 120000,
-            },
-          ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -252,27 +162,7 @@ export function useLudoGame() {
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_NOTIFS);
-      return saved
-        ? JSON.parse(saved)
-        : [
-            {
-              id: 'notif_1',
-              type: 'reward',
-              title: 'Daily Login Reward',
-              message: 'Claim +50 XP for daily check-in!',
-              timestamp: Date.now() - 3600000,
-              read: false,
-              actionData: { rewardXp: 50 },
-            },
-            {
-              id: 'notif_2',
-              type: 'friend_online',
-              title: 'Friend Online',
-              message: 'MasterDice is online now.',
-              timestamp: Date.now() - 7200000,
-              read: true,
-            },
-          ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }

@@ -204,55 +204,65 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
         {/* Scrollable Leaderboard List */}
         <div className="flex-1 overflow-y-auto py-3 space-y-2">
-          {sortedEntries.map((entry, idx) => {
-            const rank = idx + 1;
-            const isUser = entry.isCurrentUser || entry.name === currentUserName;
+          {sortedEntries.length === 0 ? (
+            <div className="py-14 flex flex-col items-center justify-center text-center text-slate-500 space-y-2">
+              <Trophy className="w-10 h-10 opacity-30 text-amber-400" />
+              <p className="text-sm font-bold text-slate-300">No Ranked Matches Yet</p>
+              <p className="text-xs text-slate-500 max-w-xs">
+                Play real multiplayer games or challenge opponents to rank up on the global ELO leaderboard.
+              </p>
+            </div>
+          ) : (
+            sortedEntries.map((entry, idx) => {
+              const rank = idx + 1;
+              const isUser = entry.isCurrentUser || entry.name === currentUserName;
 
-            return (
-              <div
-                key={entry.id}
-                className={`p-3 rounded-2xl border flex items-center justify-between gap-3 transition ${
-                  isUser
-                    ? 'bg-amber-950/30 border-amber-500/50 text-white shadow-md'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {getRankBadge(rank)}
+              return (
+                <div
+                  key={entry.id}
+                  className={`p-3 rounded-2xl border flex items-center justify-between gap-3 transition ${
+                    isUser
+                      ? 'bg-amber-950/30 border-amber-500/50 text-white shadow-md'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {getRankBadge(rank)}
 
-                  <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sm shrink-0">
-                    {entry.avatar}
+                    <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sm shrink-0">
+                      {entry.avatar}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="font-bold text-xs sm:text-sm text-white truncate flex items-center gap-1.5">
+                        <span>{entry.name}</span>
+                        {isUser && (
+                          <span className="text-[9px] px-1.5 py-0.2 bg-amber-400 text-slate-950 font-black rounded">
+                            YOU
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-400 flex items-center gap-2">
+                        <span>{entry.wins} Wins</span>
+                        <span>•</span>
+                        <span>{entry.winRate}% Winrate</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="min-w-0">
-                    <div className="font-bold text-xs sm:text-sm text-white truncate flex items-center gap-1.5">
-                      <span>{entry.name}</span>
-                      {isUser && (
-                        <span className="text-[9px] px-1.5 py-0.2 bg-amber-400 text-slate-950 font-black rounded">
-                          YOU
-                        </span>
-                      )}
+                  <div className="text-right shrink-0">
+                    <div className="font-mono font-black text-xs sm:text-sm text-amber-400">
+                      {filterMetric === 'rating' && `⭐ ${entry.rating}`}
+                      {filterMetric === 'wins' && `🏆 ${entry.wins}`}
+                      {filterMetric === 'winRate' && `${entry.winRate}%`}
+                      {filterMetric === 'xp' && `⚡ ${entry.xp} XP`}
                     </div>
-                    <div className="text-[10px] text-slate-400 flex items-center gap-2">
-                      <span>{entry.wins} Wins</span>
-                      <span>•</span>
-                      <span>{entry.winRate}% Winrate</span>
-                    </div>
+                    <div className="text-[10px] text-slate-500">{entry.gamesPlayed} Matches</div>
                   </div>
                 </div>
-
-                <div className="text-right shrink-0">
-                  <div className="font-mono font-black text-xs sm:text-sm text-amber-400">
-                    {filterMetric === 'rating' && `⭐ ${entry.rating}`}
-                    {filterMetric === 'wins' && `🏆 ${entry.wins}`}
-                    {filterMetric === 'winRate' && `${entry.winRate}%`}
-                    {filterMetric === 'xp' && `⚡ ${entry.xp} XP`}
-                  </div>
-                  <div className="text-[10px] text-slate-500">{entry.gamesPlayed} Matches</div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
         {/* Current User Sticky Rank Footer */}
