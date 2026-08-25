@@ -188,10 +188,10 @@ export function useLudoGame() {
   // Core game state
   const [gameState, setGameState] = useState<GameState>(() => {
     const p1 = createInitialPlayer('p1', profile.name, profile.avatar, profile.preferredColor, 'human', 'medium', true);
-    const p2 = createInitialPlayer('p2', 'Bot Green', '🤖', 'green', 'bot', 'medium', false);
-    const p3 = createInitialPlayer('p3', 'Bot Yellow', '🤖', 'yellow', 'bot', 'medium', false);
-    const p4 = createInitialPlayer('p4', 'Bot Blue', '🤖', 'blue', 'bot', 'medium', false);
-    return createInitialGameState('OFFLINE', 'local_vs_bot', [p1, p2, p3, p4], 30);
+    const p2 = createInitialPlayer('p2', 'Player 2', '⚡', 'green', 'human', 'medium', false);
+    const p3 = createInitialPlayer('p3', 'Player 3', '🦁', 'yellow', 'human', 'medium', false);
+    const p4 = createInitialPlayer('p4', 'Player 4', '🐉', 'blue', 'human', 'medium', false);
+    return createInitialGameState('LIVE', 'local_pass_play', [p1, p2, p3, p4], 30);
   });
 
   // WebSocket ref
