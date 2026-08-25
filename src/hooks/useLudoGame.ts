@@ -284,7 +284,7 @@ export function useLudoGame() {
   // Modal open states
   const [activeModal, setActiveModal] = useState<
     'lobby' | 'rules' | 'settings' | 'friends' | 'stats' | 'history' | 'leaderboard' | 'notifications' | 'wallet' | 'auth' | null
-  >('lobby');
+  >(null);
 
 
   const [isChatOpen, setIsChatOpen] = useState(false);

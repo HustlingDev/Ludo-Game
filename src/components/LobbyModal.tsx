@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   Zap,
+  X,
 } from 'lucide-react';
 
 interface LobbyModalProps {
@@ -152,20 +153,31 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
             </div>
           </div>
 
-          {/* Theme Quick Toggle */}
-          <div className="flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-700">
-            <span className="text-xs text-slate-400 font-medium mr-1">Template:</span>
-            <select
-              value={theme}
-              onChange={(e) => setTheme(e.target.value as BoardTheme)}
-              className="bg-transparent text-xs font-bold text-amber-400 focus:outline-none cursor-pointer"
+          <div className="flex items-center gap-2">
+            {/* Theme Quick Toggle */}
+            <div className="flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-700">
+              <span className="text-xs text-slate-400 font-medium mr-1">Template:</span>
+              <select
+                value={theme}
+                onChange={(e) => setTheme(e.target.value as BoardTheme)}
+                className="bg-transparent text-xs font-bold text-amber-400 focus:outline-none cursor-pointer"
+              >
+                <option value="classic_arrows" className="bg-slate-900 text-white">Classic Arrows</option>
+                <option value="star_minimal" className="bg-slate-900 text-white">Star Minimal</option>
+                <option value="geometric_diamond" className="bg-slate-900 text-white">Retro Diamond</option>
+                <option value="classic_wood" className="bg-slate-900 text-white">Classic Wood</option>
+                <option value="modern_neon" className="bg-slate-900 text-white">Modern Neon</option>
+              </select>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+              aria-label="Close Lobby"
             >
-              <option value="classic_arrows" className="bg-slate-900 text-white">Classic Arrows</option>
-              <option value="star_minimal" className="bg-slate-900 text-white">Star Minimal</option>
-              <option value="geometric_diamond" className="bg-slate-900 text-white">Retro Diamond</option>
-              <option value="classic_wood" className="bg-slate-900 text-white">Classic Wood</option>
-              <option value="modern_neon" className="bg-slate-900 text-white">Modern Neon</option>
-            </select>
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
