@@ -66,14 +66,19 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     gameState.diceValue,
   ]);
 
-  // Group tokens for top-level overlay
+  // Group tokens for top-level overlay with accurate stacking
   const tokensOnBoard = useMemo(() => {
     const list: {
       token: Token;
       coord: GridCoord;
       player: (typeof gameState.players)[0];
       isValid: boolean;
+      stackKey: string;
+      stackIndex: number;
+      stackTotal: number;
     }[] = [];
+
+    const coordMap: Record<string, typeof list> = {};
 
     gameState.players.forEach((p) => {
       p.tokens.forEach((t) => {
@@ -82,7 +87,28 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           p.color === activeColor &&
           gameState.mustSelectToken &&
           gameState.validTokenMoves.includes(t.id);
-        list.push({ token: t, coord, player: p, isValid });
+        const stackKey = `${coord.row.toFixed(2)}_${coord.col.toFixed(2)}`;
+        const entry = {
+          token: t,
+          coord,
+          player: p,
+          isValid,
+          stackKey,
+          stackIndex: 0,
+          stackTotal: 1,
+        };
+        list.push(entry);
+        if (!coordMap[stackKey]) coordMap[stackKey] = [];
+        coordMap[stackKey].push(entry);
+      });
+    });
+
+    // Populate stack indices
+    Object.values(coordMap).forEach((group) => {
+      const total = group.length;
+      group.forEach((item, idx) => {
+        item.stackIndex = idx;
+        item.stackTotal = total;
       });
     });
 
@@ -453,28 +479,49 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           Array.from({ length: 15 }).map((__, c) => renderCell(r, c))
         )}
 
-        {/* Render Floating Pawns/Tokens */}
-        {tokensOnBoard.map(({ token, coord, player, isValid }) => (
-          <TokenPiece
-            key={`token-${player.color}-${token.id}`}
-            token={token}
-            playerColor={player.color}
-            playerName={player.name}
-            coord={coord}
-            isValidMove={isValid && Boolean(isMyTurn)}
-            isDragged={draggedTokenId === token.id}
-            isHovered={hoveredTokenId === token.id}
-            onDragStart={() => setDraggedTokenId(token.id)}
-            onDragEnd={() => setDraggedTokenId(null)}
-            onHover={() => setHoveredTokenId(token.id)}
-            onHoverEnd={() => setHoveredTokenId(null)}
-            onClick={() => {
-              if (isValid && isMyTurn) {
-                onMoveToken(token.id);
-              }
-            }}
-          />
-        ))}
+        {/* Render Floating Pawns/Tokens in Absolute Overlay Layer */}
+        <div className="absolute inset-0 pointer-events-none">
+          {tokensOnBoard.map(
+            ({ token, coord, player, isValid, stackIndex, stackTotal }) => (
+              <div
+                key={`token-slot-${player.color}-${token.id}`}
+                className="absolute pointer-events-auto flex items-center justify-center transition-all duration-300 ease-out"
+                style={{
+                  top: `${(coord.row / 15) * 100}%`,
+                  left: `${(coord.col / 15) * 100}%`,
+                  width: `${(1 / 15) * 100}%`,
+                  height: `${(1 / 15) * 100}%`,
+                  zIndex:
+                    draggedTokenId === token.id
+                      ? 50
+                      : isValid
+                      ? 40
+                      : 20 + stackIndex,
+                }}
+              >
+                <TokenPiece
+                  token={token}
+                  color={player.color}
+                  isValidMove={isValid && Boolean(isMyTurn)}
+                  isCurrentPlayer={Boolean(isMyTurn)}
+                  isDragging={draggedTokenId === token.id}
+                  isHovered={hoveredTokenId === token.id}
+                  stackIndex={stackIndex}
+                  stackTotal={stackTotal}
+                  onSelect={() => {
+                    if (isValid && isMyTurn) {
+                      onMoveToken(token.id);
+                    }
+                  }}
+                  onDragStart={() => setDraggedTokenId(token.id)}
+                  onDragEnd={() => setDraggedTokenId(null)}
+                  onMouseEnter={() => setHoveredTokenId(token.id)}
+                  onMouseLeave={() => setHoveredTokenId(null)}
+                />
+              </div>
+            )
+          )}
+        </div>
       </div>
     </div>
   );

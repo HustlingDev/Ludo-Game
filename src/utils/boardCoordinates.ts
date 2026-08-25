@@ -123,28 +123,28 @@ export const HOME_CENTER_COORDS: Record<PlayerColor, GridCoord> = {
 // Yard slot coordinates (within the 15x15 board)
 export const YARD_SLOT_COORDS: Record<PlayerColor, GridCoord[]> = {
   red: [
-    { row: 1.5, col: 1.5 },
-    { row: 1.5, col: 3.5 },
-    { row: 3.5, col: 1.5 },
-    { row: 3.5, col: 3.5 },
+    { row: 1.7, col: 1.7 },
+    { row: 1.7, col: 3.3 },
+    { row: 3.3, col: 1.7 },
+    { row: 3.3, col: 3.3 },
   ],
   green: [
-    { row: 1.5, col: 9.5 },
-    { row: 1.5, col: 11.5 },
-    { row: 3.5, col: 9.5 },
-    { row: 3.5, col: 11.5 },
+    { row: 1.7, col: 10.7 },
+    { row: 1.7, col: 12.3 },
+    { row: 3.3, col: 10.7 },
+    { row: 3.3, col: 12.3 },
   ],
   blue: [
-    { row: 9.5, col: 1.5 },
-    { row: 9.5, col: 3.5 },
-    { row: 11.5, col: 1.5 },
-    { row: 11.5, col: 3.5 },
+    { row: 10.7, col: 1.7 },
+    { row: 10.7, col: 3.3 },
+    { row: 12.3, col: 1.7 },
+    { row: 12.3, col: 3.3 },
   ],
   yellow: [
-    { row: 9.5, col: 9.5 },
-    { row: 9.5, col: 11.5 },
-    { row: 11.5, col: 9.5 },
-    { row: 11.5, col: 11.5 },
+    { row: 10.7, col: 10.7 },
+    { row: 10.7, col: 12.3 },
+    { row: 12.3, col: 10.7 },
+    { row: 12.3, col: 12.3 },
   ],
 };
 

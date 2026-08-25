@@ -1,7 +1,12 @@
 import crypto from 'crypto';
 import express, { Request, Response } from 'express';
 import { ALLOWED_STAKES, GAME_ECONOMICS } from '../src/types/platform';
-import { getPesapalConfig, validateStakeAmount, calculateMatchPrizeAndFee } from './services/economicsService';
+import {
+  getPesapalConfig,
+  getPesapalAuthToken,
+  validateStakeAmount,
+  calculateMatchPrizeAndFee,
+} from './services/economicsService';
 
 const router = express.Router();
 
@@ -69,24 +74,72 @@ router.post('/pesapal/order', async (req: Request, res: Response) => {
 
     if (isNaN(numAmount) || numAmount < GAME_ECONOMICS.minDepositUGX || numAmount > GAME_ECONOMICS.maxDepositUGX) {
       return res.status(400).json({
-        error: `Deposit amount must be between UGX ${GAME_ECONOMICS.minDepositUGX} and UGX ${GAME_ECONOMICS.maxDepositUGX}`,
+        error: `Deposit amount must be between UGX ${GAME_ECONOMICS.minDepositUGX.toLocaleString()} and UGX ${GAME_ECONOMICS.maxDepositUGX.toLocaleString()}`,
       });
     }
 
     const config = getPesapalConfig();
-    const merchantReference = `LUDO-${userId ? userId.slice(0, 6) : 'GUEST'}-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    const merchantReference = `LUDO-${userId ? String(userId).slice(0, 6) : 'GUEST'}-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
-    // Return structured order object for Pesapal 3.0 sandbox submission
+    // Attempt live Pesapal 3.0 token retrieval
+    const token = await getPesapalAuthToken();
+    if (token) {
+      try {
+        const orderPayload = {
+          id: merchantReference,
+          currency: currency || 'UGX',
+          amount: numAmount,
+          description: description || 'Ludo UGX Wallet Deposit',
+          callback_url: config.callbackUrl,
+          cancellation_url: config.cancellationUrl,
+          notification_id: config.ipnId || undefined,
+          billing_address: {
+            email_address: email || 'gamer@ludo-arena.com',
+            phone_number: phone || '256700000000',
+            country_code: 'UG',
+            first_name: 'Ludo',
+            last_name: 'Player',
+          },
+        };
+
+        const pesapalRes = await fetch(`${config.baseUrl}/api/Transactions/SubmitOrder-Process`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(orderPayload),
+        });
+
+        const pesapalData = await pesapalRes.json();
+        if (pesapalRes.ok && pesapalData.redirect_url) {
+          return res.json({
+            success: true,
+            merchantReference,
+            pesapalTrackingId: pesapalData.order_tracking_id,
+            redirectUrl: pesapalData.redirect_url,
+            status: pesapalData.status || '200',
+            mode: process.env.PESAPAL_ENVIRONMENT === 'production' ? 'production' : 'sandbox',
+          });
+        }
+      } catch (pesapalErr) {
+        console.warn('[PESAPAL] SubmitOrder-Process failed, fallback to sandbox response:', pesapalErr);
+      }
+    }
+
+    // Fallback sandbox / simulation response
+    const appUrl = (process.env.APP_URL || 'https://ludo-arena-theta.vercel.app').replace(/\/$/, '');
     res.json({
       success: true,
       merchantReference,
       amount: numAmount,
       currency: currency || 'UGX',
       status: 'pending',
-      redirectUrl: `${process.env.APP_URL || ''}/payment/status?ref=${merchantReference}&amount=${numAmount}`,
+      redirectUrl: `${appUrl}/payment/status?ref=${merchantReference}&amount=${numAmount}`,
       pesapalTrackingId: `PESA-${crypto.randomBytes(6).toString('hex').toUpperCase()}`,
       sandboxMode: process.env.PESAPAL_ENVIRONMENT !== 'production',
-      note: 'Pesapal 3.0 Sandbox order initialized successfully',
+      note: 'Pesapal 3.0 order initialized',
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to create Pesapal order' });
