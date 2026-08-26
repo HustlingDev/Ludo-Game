@@ -22,6 +22,9 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
@@ -30,17 +33,24 @@ jobs:
       - name: Build Web Application Assets
         run: |
           npm ci || npm install
-          npm run build || true
+          npm run build
+
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Build Android Debug & Release APK
         working-directory: android
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
         run: |
-          gradle assembleDebug assembleRelease --stacktrace
+          gradle assembleDebug assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: app-apk
+          name: ludo-king-apk
           path: |
-            android/app/build/outputs/apk/**/*.apk
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
           retention-days: 14

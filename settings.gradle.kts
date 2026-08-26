@@ -1,12 +1,6 @@
 pluginManagement {
     repositories {
-        google {
-            content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
-                includeGroupByRegex("androidx.*")
-            }
-        }
+        google()
         mavenCentral()
         gradlePluginPortal()
     }
@@ -20,5 +14,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "LudoRealTimeMultiplayer"
-include(":android:app")
-project(":android:app").projectDir = file("android/app")
+include(":app")
+project(":app").projectDir = file("android/app")
