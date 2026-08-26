@@ -3,16 +3,16 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Dark slate background -->
+    <!-- Circular dark slate background -->
     <path
         android:fillColor="#0f172a"
-        android:pathData="M0,0h108v108h-108z"/>
+        android:pathData="M54,0 A54,54 0 1,0 54,108 A54,54 0 1,0 54,0 Z"/>
     <!-- Blue Dice body -->
     <path
         android:fillColor="#0284c7"
-        android:pathData="M24,24h60v60h-60z"/>
+        android:pathData="M28,28h52v52h-52z"/>
     <!-- White Dice dots -->
     <path
         android:fillColor="#ffffff"
-        android:pathData="M34,34h8v8h-8z M66,34h8v8h-8z M34,66h8v8h-8z M66,66h8v8h-8z M50,50h8v8h-8z"/>
+        android:pathData="M38,38h6v6h-6z M64,38h6v6h-6z M38,64h6v6h-6z M64,64h6v6h-6z M51,51h6v6h-6z"/>
 </vector>

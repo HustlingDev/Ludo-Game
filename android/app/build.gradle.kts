@@ -15,22 +15,15 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    signingConfigs {
-        create("release") {
-            val debugSigning = getByName("debug")
-            storeFile = debugSigning.storeFile
-            storePassword = debugSigning.storePassword
-            keyAlias = debugSigning.keyAlias
-            keyPassword = debugSigning.keyPassword
+        vectorDrawables {
+            useSupportLibrary = true
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

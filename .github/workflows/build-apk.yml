@@ -39,12 +39,13 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Build Android Debug & Release APKs
+      - name: Accept Android SDK Licenses & Build APK
         working-directory: android
         env:
-          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2048m"
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
         run: |
-          gradle :app:assembleDebug :app:assembleRelease --no-daemon --stacktrace
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          gradle assembleDebug assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
