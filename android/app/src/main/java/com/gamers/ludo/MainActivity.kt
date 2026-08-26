@@ -1,6 +1,9 @@
 package com.gamers.ludo
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
@@ -33,20 +36,42 @@ class MainActivity : AppCompatActivity() {
             settings.domStorageEnabled = true
             settings.databaseEnabled = true
             settings.allowFileAccess = true
+            settings.allowContentAccess = true
             settings.cacheMode = WebSettings.LOAD_DEFAULT
             settings.mediaPlaybackRequiresUserGesture = false
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
 
-            webViewClient = WebViewClient()
+            webViewClient = object : WebViewClient() {
+                override fun onReceivedError(
+                    view: WebView?,
+                    errorCode: Int,
+                    description: String?,
+                    failingUrl: String?
+                ) {
+                    if (failingUrl?.startsWith("file://") != true) {
+                        view?.loadUrl("file:///android_asset/dist/index.html")
+                    }
+                }
+            }
             webChromeClient = WebChromeClient()
         }
 
         setContentView(webView)
 
-        // Load application (local bundled asset or production web host)
         val serverUrl = "https://ais-pre-z575rdksvgk352adj6uihh-104205062671.europe-west2.run.app"
-        webView.loadUrl(serverUrl)
+        if (isOnline()) {
+            webView.loadUrl(serverUrl)
+        } else {
+            webView.loadUrl("file:///android_asset/dist/index.html")
+        }
+    }
+
+    private fun isOnline(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     override fun onBackPressed() {
