@@ -21,6 +21,8 @@ import { LeaderboardModal } from './components/LeaderboardModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { WalletModal } from './components/WalletModal';
 import { AuthModal } from './components/AuthModal';
+import { AdminModal } from './components/AdminModal';
+import { MainLobbyView } from './components/MainLobbyView';
 import { BottomNav } from './components/BottomNav';
 
 import { ErrorToast } from './components/ErrorToast';
@@ -35,6 +37,7 @@ import {
   Flame,
   AlertCircle,
   HelpCircle,
+  Home,
 } from 'lucide-react';
 import { sounds } from './utils/audio';
 
@@ -80,6 +83,7 @@ export default function App() {
     handleNotificationAction,
     handleSendChat,
     handleSendEmoji,
+    handleExitToLobby,
   } = useLudoGame();
 
   const activeColor =
@@ -131,7 +135,7 @@ export default function App() {
         unreadNotificationsCount={unreadNotificationsCount}
         onOpenRules={() => setActiveModal('rules')}
         onToggleChat={() => setIsChatOpen(!isChatOpen)}
-        onOpenLobby={() => setActiveModal('lobby')}
+        onOpenLobby={() => handleExitToLobby()}
         onOpenFriends={() => setActiveModal('friends')}
         onOpenLeaderboard={() => setActiveModal('leaderboard')}
         onOpenStats={() => setActiveModal('stats')}
@@ -140,12 +144,31 @@ export default function App() {
         onOpenNotifications={() => setActiveModal('notifications')}
         onOpenWallet={() => setActiveModal('wallet')}
         onOpenAuth={() => setActiveModal('auth')}
+        onOpenAdmin={() => setActiveModal('admin')}
+        onExitToLobby={handleExitToLobby}
       />
 
       {/* Main Game Container */}
       <main className="flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 md:p-6 flex flex-col items-center justify-center">
-        {/* Waiting in Lobby View for Online Game */}
-        {gameState.mode === 'online_multiplayer' && gameState.status === 'waiting' ? (
+        {/* CASE 1: Main Lobby (NO board game in lobby) */}
+        {gameState.status === 'lobby' ? (
+          <MainLobbyView
+            profile={profile}
+            setProfile={setProfile}
+            userRating={profile.rating}
+            userBalanceUGX={0}
+            onStartLocalGame={handleStartLocalGame}
+            onCreateOnlineRoom={handleCreateOnlineRoom}
+            onJoinOnlineRoom={handleJoinOnlineRoom}
+            onOpenWallet={() => setActiveModal('wallet')}
+            onOpenLeaderboard={() => setActiveModal('leaderboard')}
+            onOpenRules={() => setActiveModal('rules')}
+            onOpenStats={() => setActiveModal('stats')}
+            onOpenAdmin={() => setActiveModal('admin')}
+            isAdmin={true}
+          />
+        ) : gameState.mode === 'online_multiplayer' && gameState.status === 'waiting' ? (
+          /* CASE 2: Waiting in Online Room Lobby */
           <div className="w-full max-w-xl bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-md flex flex-col items-center text-center space-y-6">
             <div className="space-y-1">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-sky-500/20 text-sky-400 rounded-full text-xs font-bold border border-sky-500/30">
@@ -228,36 +251,46 @@ export default function App() {
               })}
             </div>
 
-            {/* Start Button (Host only) */}
-            {isHost ? (
+            {/* Actions: Start & Leave */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
               <button
-                onClick={() => {
-                  sounds.playButton();
-                  handleStartLocalGame(
-                    'local_pass_play',
-                    gameState.players.map((p) => ({
-                      name: p.name,
-                      avatar: p.avatar,
-                      color: p.color,
-                      type: p.type,
-                      botDifficulty: p.botDifficulty,
-                    }))
-                  );
-                }}
-                className="w-full max-w-sm py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-sm shadow-xl shadow-sky-500/25 transition flex items-center justify-center gap-2"
+                onClick={handleExitToLobby}
+                className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition"
               >
-                <Play className="w-4 h-4 fill-white" />
-                <span>Start Match ({gameState.players.length} Players)</span>
+                Exit to Lobby
               </button>
-            ) : (
-              <div className="text-xs text-slate-400 flex items-center gap-1.5 animate-pulse">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>Waiting for the host to start the game...</span>
-              </div>
-            )}
+
+              {/* Start Button (Host only) */}
+              {isHost ? (
+                <button
+                  onClick={() => {
+                    sounds.playButton();
+                    handleStartLocalGame(
+                      'local_pass_play',
+                      gameState.players.map((p) => ({
+                        name: p.name,
+                        avatar: p.avatar,
+                        color: p.color,
+                        type: p.type,
+                        botDifficulty: p.botDifficulty,
+                      }))
+                    );
+                  }}
+                  className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-600 to-amber-500 hover:brightness-110 active:scale-95 text-white font-black text-sm shadow-xl shadow-sky-500/25 transition flex items-center justify-center gap-2"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>Start Match ({gameState.players.length} Players)</span>
+                </button>
+              ) : (
+                <div className="flex-1 text-xs text-slate-400 flex items-center justify-center gap-1.5 animate-pulse">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>Waiting for host to start...</span>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
-          /* Active Playing Board Layout */
+          /* CASE 3: Active Playing Arena with 15x15 Game Board & 3D Dice */
           <div className="w-full flex flex-col lg:flex-row items-center justify-center gap-3 sm:gap-6">
             {/* Left Player Column */}
             <div className="w-full lg:w-56 flex lg:flex-col gap-2 justify-between order-2 lg:order-1">
@@ -312,18 +345,29 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Turn Timer Badge */}
-                {gameState.turnTimeLimit > 0 && (
-                  <div
-                    className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold border shrink-0 ${
-                      gameState.turnTimeRemaining <= 5
-                        ? 'bg-rose-950/60 border-rose-500 text-rose-400 animate-pulse'
-                        : 'bg-slate-800 border-slate-700 text-slate-300'
-                    }`}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Exit Match Button */}
+                  <button
+                    onClick={handleExitToLobby}
+                    className="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-slate-300 hover:text-white border border-slate-700 transition"
+                    title="Exit to Lobby"
                   >
-                    ⏱️ {gameState.turnTimeRemaining}s
-                  </div>
-                )}
+                    Exit
+                  </button>
+
+                  {/* Turn Timer Badge */}
+                  {gameState.turnTimeLimit > 0 && (
+                    <div
+                      className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold border ${
+                        gameState.turnTimeRemaining <= 5
+                          ? 'bg-rose-950/60 border-rose-500 text-rose-400 animate-pulse'
+                          : 'bg-slate-800 border-slate-700 text-slate-300'
+                      }`}
+                    >
+                      ⏱️ {gameState.turnTimeRemaining}s
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* The 15x15 Game Board */}
@@ -404,13 +448,14 @@ export default function App() {
         activeModal={activeModal}
         pendingRequestsCount={pendingRequests.length}
         unreadNotificationsCount={unreadNotificationsCount}
-        onOpenLobby={() => setActiveModal('lobby')}
+        onOpenLobby={() => handleExitToLobby()}
         onOpenFriends={() => setActiveModal('friends')}
         onOpenLeaderboard={() => setActiveModal('leaderboard')}
         onOpenStats={() => setActiveModal('stats')}
         onOpenHistory={() => setActiveModal('history')}
         onOpenSettings={() => setActiveModal('settings')}
         onOpenNotifications={() => setActiveModal('notifications')}
+        onOpenAdmin={() => setActiveModal('admin')}
       />
 
       {/* Modals & Overlays */}
@@ -429,6 +474,12 @@ export default function App() {
         onStartLocalGame={handleStartLocalGame}
         onCreateOnlineRoom={handleCreateOnlineRoom}
         onJoinOnlineRoom={handleJoinOnlineRoom}
+      />
+
+      <AdminModal
+        isOpen={activeModal === 'admin'}
+        onClose={() => setActiveModal(null)}
+        adminEmail="hackerugg06@gmail.com"
       />
 
       <SettingsModal
@@ -485,8 +536,8 @@ export default function App() {
 
       <VictoryModal
         gameState={gameState}
-        onRestart={() => setActiveModal('lobby')}
-        onLeaveToLobby={() => setActiveModal('lobby')}
+        onRestart={handleExitToLobby}
+        onLeaveToLobby={handleExitToLobby}
       />
 
       <ChatAndReactions

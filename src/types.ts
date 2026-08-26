@@ -31,7 +31,7 @@ export interface Player {
 
 export type GameMode = 'local_pass_play' | 'local_vs_bot' | 'online_multiplayer';
 
-export type GameStatus = 'waiting' | 'playing' | 'paused' | 'finished';
+export type GameStatus = 'lobby' | 'waiting' | 'playing' | 'paused' | 'finished';
 
 export type BoardTheme =
   | 'classic_arrows'
@@ -39,6 +39,76 @@ export type BoardTheme =
   | 'geometric_diamond'
   | 'classic_wood'
   | 'modern_neon';
+
+export interface AdminUserRecord {
+  id: string;
+  email: string;
+  name: string;
+  avatar: string;
+  rating: number;
+  balanceUGX: number;
+  totalGames: number;
+  wins: number;
+  status: 'active' | 'suspended' | 'banned' | 'flagged';
+  createdAt: number;
+  lastLogin: number;
+  ipAddress: string;
+}
+
+export interface AdminMatchRecord {
+  id: string;
+  roomId: string;
+  gameMode: GameMode;
+  status: 'active' | 'finished' | 'cancelled';
+  stakeUGX: number;
+  prizePoolUGX: number;
+  platformRakeUGX: number;
+  players: { name: string; color: PlayerColor; rating: number }[];
+  winnerName?: string;
+  startedAt: number;
+  durationSeconds?: number;
+}
+
+export interface AdminTransactionRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  type: 'DEPOSIT' | 'WITHDRAWAL' | 'MATCH_STAKE' | 'MATCH_PRIZE' | 'REFUND';
+  amountUGX: number;
+  status: 'COMPLETED' | 'PENDING' | 'FAILED';
+  merchantReference: string;
+  pesapalTrackingId?: string;
+  timestamp: number;
+}
+
+export interface AdminRiskFlag {
+  id: string;
+  userId: string;
+  userName: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  category: 'RAPID_ROLLS' | 'COLLUSION_SUSPECT' | 'LARGE_WITHDRAWAL' | 'CONCURRENT_LOGIN' | 'EXCESSIVE_DISCONNECT';
+  description: string;
+  detectedAt: number;
+  status: 'OPEN' | 'INVESTIGATING' | 'RESOLVED' | 'DISMISSED';
+}
+
+export interface AdminAuditLog {
+  id: string;
+  adminEmail: string;
+  action: string;
+  targetId: string;
+  details: string;
+  timestamp: number;
+}
+
+export interface SecurityTestReport {
+  id: string;
+  testName: string;
+  category: 'PENETRATION' | 'AUTHORIZATION' | 'WALLET_INTEGRITY' | 'PAYMENT_IDEMPOTENCY' | 'RACE_CONDITION' | 'ANTI_CHEAT';
+  status: 'PASSED' | 'WARNING' | 'FAILED';
+  executionTimeMs: number;
+  details: string;
+}
 
 export interface GameState {
   roomId: string;

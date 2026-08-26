@@ -1,4 +1,4 @@
-import { GameState, Player, PlayerColor, Token, GameMode } from '../types';
+import { GameState, Player, PlayerColor, Token, GameMode, GameStatus } from '../types';
 import { START_TRACK_INDEX, isSafeTrackIndex } from './boardCoordinates';
 
 export function createDefaultTokens(color: PlayerColor): Token[] {
@@ -40,13 +40,14 @@ export function createInitialGameState(
   roomId: string,
   mode: GameMode,
   players: Player[],
-  turnTimeLimit: number = 30
+  turnTimeLimit: number = 30,
+  initialStatus: GameStatus = 'playing'
 ): GameState {
   const activeColors = players.map((p) => p.color);
   return {
     roomId,
     mode,
-    status: 'playing',
+    status: initialStatus,
     players,
     activeColorIndex: 0,
     activeColors,
@@ -59,7 +60,7 @@ export function createInitialGameState(
     winnerOrder: [],
     consecutiveSixes: 0,
     mustSelectToken: false,
-    lastMoveDescription: 'Game started! Roll the dice to begin.',
+    lastMoveDescription: initialStatus === 'lobby' ? 'Welcome to Ludo Arena! Select a mode to start.' : 'Game started! Roll the dice to begin.',
   };
 }
 

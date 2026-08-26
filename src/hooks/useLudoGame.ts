@@ -191,7 +191,7 @@ export function useLudoGame() {
     const p2 = createInitialPlayer('p2', 'Player 2', '⚡', 'green', 'human', 'medium', false);
     const p3 = createInitialPlayer('p3', 'Player 3', '🦁', 'yellow', 'human', 'medium', false);
     const p4 = createInitialPlayer('p4', 'Player 4', '🐉', 'blue', 'human', 'medium', false);
-    return createInitialGameState('LIVE', 'local_pass_play', [p1, p2, p3, p4], 30);
+    return createInitialGameState('LIVE', 'local_pass_play', [p1, p2, p3, p4], 30, 'lobby');
   });
 
   // WebSocket ref
@@ -881,6 +881,14 @@ export function useLudoGame() {
     }
   };
 
+  const handleExitToLobby = () => {
+    sounds.playButton();
+    setGameState((prev) => ({
+      ...prev,
+      status: 'lobby',
+    }));
+  };
+
   return {
     profile,
     setProfile,
@@ -913,6 +921,7 @@ export function useLudoGame() {
     handleStartLocalGame,
     handleCreateOnlineRoom,
     handleJoinOnlineRoom,
+    handleExitToLobby,
     handleSendFriendRequest,
     handleAcceptFriendRequest,
     handleRejectFriendRequest,

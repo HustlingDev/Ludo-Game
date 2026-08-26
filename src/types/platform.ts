@@ -195,3 +195,15 @@ export interface GameSettlementDoc {
   completedAt?: number;
   transactionReferences?: string[];
 }
+
+export function calculatePrizePool(stakePerPlayer: number, playerCount: number = 2) {
+  const totalPot = stakePerPlayer * playerCount;
+  const platformFee = Math.round(totalPot * 0.1); // 10% platform fee
+  const winnerPrize = totalPot - platformFee;
+  return {
+    totalPot,
+    platformFee,
+    winnerPrize,
+  };
+}
+

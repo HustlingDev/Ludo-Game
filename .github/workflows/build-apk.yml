@@ -21,32 +21,26 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew || chmod +x android/gradlew || true
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
 
-      - name: Build Web Assets (if applicable)
+      - name: Build Web Application Assets
         run: |
-          if [ -f package.json ]; then
-            npm ci || npm install
-            npm run build || true
-          fi
+          npm ci || npm install
+          npm run build || true
 
-      - name: Build APK with Gradle
+      - name: Build Android Debug & Release APK
+        working-directory: android
         run: |
-          if [ -f gradlew ]; then
-            ./gradlew assembleRelease assembleDebug --stacktrace || ./gradlew assembleDebug --stacktrace
-          elif [ -d android ] && [ -f android/gradlew ]; then
-            cd android && ./gradlew assembleRelease assembleDebug --stacktrace || ./gradlew assembleDebug --stacktrace
-          else
-            gradle assembleDebug --stacktrace
-          fi
+          gradle assembleDebug assembleRelease --stacktrace
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: app-apk
           path: |
-            **/build/outputs/apk/**/*.apk
+            android/app/build/outputs/apk/**/*.apk
           retention-days: 14

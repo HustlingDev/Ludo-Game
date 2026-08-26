@@ -17,6 +17,7 @@ import {
   Sparkles,
   Wallet,
   User,
+  Shield,
 } from 'lucide-react';
 import { sounds } from '../utils/audio';
 import { useAuth } from '../context/AuthContext';
@@ -42,6 +43,8 @@ interface HeaderProps {
   onOpenNotifications: () => void;
   onOpenWallet?: () => void;
   onOpenAuth?: () => void;
+  onOpenAdmin?: () => void;
+  onExitToLobby?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -65,10 +68,13 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNotifications,
   onOpenWallet,
   onOpenAuth,
+  onOpenAdmin,
+  onExitToLobby,
 }) => {
   const [copied, setCopied] = useState(false);
   const { user, wallet, userProfile } = useAuth();
 
+  const isInGame = gameState.status === 'playing' || gameState.status === 'paused';
 
   const handleCopyCode = () => {
     if (gameState.roomId) {
@@ -85,7 +91,11 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={() => {
             sounds.playButton();
-            onOpenLobby();
+            if (isInGame && onExitToLobby) {
+              onExitToLobby();
+            } else {
+              onOpenLobby();
+            }
           }}
           className="flex items-center gap-2 hover:opacity-90 transition group"
         >
@@ -99,7 +109,9 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Ludo Royale</span>
             </h1>
             <span className="text-[10px] text-slate-400 font-medium">
-              {gameState.mode === 'online_multiplayer'
+              {gameState.status === 'lobby'
+                ? 'Main Lobby'
+                : gameState.mode === 'online_multiplayer'
                 ? 'Online Room'
                 : gameState.mode === 'local_vs_bot'
                 ? 'Vs AI Bots'
@@ -107,6 +119,20 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
         </button>
+
+        {/* Exit to Lobby quick button during matches */}
+        {isInGame && onExitToLobby && (
+          <button
+            onClick={() => {
+              sounds.playButton();
+              onExitToLobby();
+            }}
+            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 text-xs font-bold transition"
+            title="Return to Lobby"
+          >
+            🏠 Exit Match
+          </button>
+        )}
 
         {/* User ELO Rating Pill */}
         <button
@@ -255,6 +281,20 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <BookOpen className="w-4 h-4" />
         </button>
+
+        {/* Admin Console */}
+        {onOpenAdmin && (
+          <button
+            onClick={() => {
+              sounds.playButton();
+              onOpenAdmin();
+            }}
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 transition"
+            title="Admin Dashboard"
+          >
+            <Shield className="w-4 h-4" />
+          </button>
+        )}
 
         {/* Settings */}
         <button
