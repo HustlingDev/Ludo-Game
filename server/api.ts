@@ -16,7 +16,7 @@ const router = express.Router();
 router.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
-    environment: process.env.PESAPAL_ENVIRONMENT || 'sandbox',
+    environment: process.env.PESAPAL_ENVIRONMENT || 'production',
     currency: GAME_ECONOMICS.currency,
     allowedStakes: ALLOWED_STAKES,
     platformFee: `${GAME_ECONOMICS.platformFeePercentage}%`,

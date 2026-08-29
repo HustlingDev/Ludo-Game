@@ -510,52 +510,78 @@ export function useLudoGame() {
       return;
     }
 
-    if (botTimerRef.current) clearTimeout(botTimerRef.current);
+    if (botTimerRef.current) {
+      clearTimeout(botTimerRef.current);
+      botTimerRef.current = null;
+    }
 
-    botTimerRef.current = setTimeout(() => {
-      if (gameState.status !== 'playing') return;
+    // Step 1: Bot needs to roll dice
+    if (!gameState.hasRolled && gameState.canRoll) {
+      botTimerRef.current = setTimeout(() => {
+        sounds.playDiceRoll();
+        setIsRollingAnimation(true);
 
-      // Bot rolls dice
-      sounds.playDiceRoll();
-      setIsRollingAnimation(true);
+        const rollVal = Math.floor(Math.random() * 6) + 1;
 
-      const rollVal = Math.floor(Math.random() * 6) + 1;
+        setTimeout(() => {
+          setIsRollingAnimation(false);
+          sounds.playDiceResult(rollVal);
 
-      setTimeout(() => {
-        setIsRollingAnimation(false);
-        sounds.playDiceResult(rollVal);
+          setGameState((prev) => {
+            if (prev.status !== 'playing') return prev;
+            const curColor = prev.activeColors[prev.activeColorIndex];
+            const curPlayer = prev.players.find((p) => p.color === curColor);
+            if (!curPlayer || curPlayer.type !== 'bot') return prev;
 
-        const { newState, hasValidMoves } = applyDiceRoll(gameState, rollVal);
-        setGameState(newState);
+            const { newState } = applyDiceRoll(prev, rollVal);
+            return newState;
+          });
+        }, 350);
+      }, 650);
 
-        if (hasValidMoves) {
-          botTimerRef.current = setTimeout(() => {
-            const bestTokenId = selectBestBotMove(newState, activePlayer, newState.validTokenMoves);
-            const moveResult = applyTokenMove(newState, bestTokenId);
-            if (moveResult.capturedColor) {
-              sounds.playCapture();
-            } else if (moveResult.reachedHome) {
-              sounds.playTokenHome();
-            } else {
-              sounds.playTokenStep();
-            }
-            setGameState(moveResult.newState);
-          }, 550);
-        }
-      }, 350);
-    }, 700);
+      return () => {
+        if (botTimerRef.current) clearTimeout(botTimerRef.current);
+      };
+    }
 
-    return () => {
-      if (botTimerRef.current) clearTimeout(botTimerRef.current);
-    };
+    // Step 2: Bot needs to select and move a token
+    if (gameState.hasRolled && gameState.mustSelectToken && gameState.validTokenMoves.length > 0) {
+      botTimerRef.current = setTimeout(() => {
+        setGameState((prev) => {
+          if (prev.status !== 'playing') return prev;
+          const curColor = prev.activeColors[prev.activeColorIndex];
+          const curPlayer = prev.players.find((p) => p.color === curColor);
+          if (!curPlayer || curPlayer.type !== 'bot') return prev;
+
+          if (!prev.mustSelectToken || prev.validTokenMoves.length === 0) return prev;
+
+          const bestTokenId = selectBestBotMove(prev, curPlayer, prev.validTokenMoves);
+          const moveResult = applyTokenMove(prev, bestTokenId);
+
+          if (moveResult.capturedColor) {
+            sounds.playCapture();
+          } else if (moveResult.reachedHome) {
+            sounds.playTokenHome();
+          } else {
+            sounds.playTokenStep();
+          }
+
+          return moveResult.newState;
+        });
+      }, 550);
+
+      return () => {
+        if (botTimerRef.current) clearTimeout(botTimerRef.current);
+      };
+    }
   }, [
     gameState.activeColorIndex,
     gameState.hasRolled,
+    gameState.mustSelectToken,
+    gameState.canRoll,
+    gameState.validTokenMoves,
     gameState.status,
     gameState.mode,
-    gameState.players,
-    gameState.activeColors,
-    gameState.diceValue,
   ]);
 
   // Turn timer countdown

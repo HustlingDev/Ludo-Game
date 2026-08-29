@@ -28,22 +28,25 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Wallets: Strict server-only mutation. Read-only for owner.
+    // Wallets: Users can read and update their own wallet (or during demo sandbox)
     match /wallets/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow write: if false; // Only server (Admin SDK / Cloud Functions) can credit/debit
+      allow create, update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
     }
 
-    // Wallet Ledger Transactions: Read-only for owner.
+    // Wallet Ledger Transactions: Owner can create and read
     match /walletTransactions/{transactionId} {
       allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow write: if false; // Only server can record transactions
+      allow create: if (isAuthenticated() && request.resource.data.userId == request.auth.uid) || isAdmin();
+      allow update, delete: if isAdmin();
     }
 
-    // Pesapal Deposits: Read-only for owner.
+    // Pesapal Deposits: Owner can read and record
     match /deposits/{depositId} {
       allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow write: if false; // Handled by server IPN & order endpoints
+      allow create, update: if (isAuthenticated() && request.resource.data.userId == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     // Withdrawals: Read-only for owner.

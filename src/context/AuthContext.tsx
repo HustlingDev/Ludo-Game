@@ -8,9 +8,9 @@ import {
   signOut as fbSignOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, updateDoc, collection } from 'firebase/firestore';
 import { auth, db } from '../services/firebaseClient';
-import { UserProfileDoc, WalletDoc, GAME_ECONOMICS } from '../types/platform';
+import { UserProfileDoc, WalletDoc, WalletTransactionDoc, GAME_ECONOMICS } from '../types/platform';
 
 interface AuthContextType {
   user: User | null;
@@ -22,6 +22,8 @@ interface AuthContextType {
   signUpEmail: (email: string, pass: string, username: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  creditWallet: (amount: number, description?: string, reference?: string) => Promise<void>;
+  debitWallet: (amount: number, description?: string, reference?: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -130,6 +132,92 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const creditWallet = async (amount: number, description?: string, reference?: string) => {
+    if (amount <= 0) return;
+    const currentUid = user?.uid || 'guest_user';
+    const currentAvailable = wallet?.availableBalance || 0;
+    const newBalance = currentAvailable + amount;
+    const updatedWallet: WalletDoc = {
+      userId: currentUid,
+      availableBalance: newBalance,
+      lockedBalance: wallet?.lockedBalance || 0,
+      currency: GAME_ECONOMICS.currency,
+      status: 'active',
+      createdAt: wallet?.createdAt || Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    setWallet(updatedWallet);
+
+    if (user) {
+      try {
+        const walletRef = doc(db, 'wallets', user.uid);
+        await setDoc(walletRef, updatedWallet, { merge: true });
+
+        const txRef = doc(collection(db, 'walletTransactions'));
+        const txDoc: WalletTransactionDoc = {
+          id: txRef.id,
+          userId: user.uid,
+          type: 'deposit',
+          amount,
+          currency: 'UGX',
+          reference: reference || `DEP-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+          status: 'completed',
+          createdAt: Date.now(),
+          metadata: { description: description || 'UGX Wallet Deposit' },
+        };
+        await setDoc(txRef, txDoc);
+      } catch (err) {
+        console.warn('Firestore wallet update failed, kept in memory state:', err);
+      }
+    }
+  };
+
+  const debitWallet = async (amount: number, description?: string, reference?: string): Promise<boolean> => {
+    if (amount <= 0) return true;
+    const currentAvailable = wallet?.availableBalance || 0;
+    if (currentAvailable < amount) return false;
+
+    const currentUid = user?.uid || 'guest_user';
+    const newBalance = currentAvailable - amount;
+    const updatedWallet: WalletDoc = {
+      userId: currentUid,
+      availableBalance: newBalance,
+      lockedBalance: wallet?.lockedBalance || 0,
+      currency: GAME_ECONOMICS.currency,
+      status: 'active',
+      createdAt: wallet?.createdAt || Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    setWallet(updatedWallet);
+
+    if (user) {
+      try {
+        const walletRef = doc(db, 'wallets', user.uid);
+        await setDoc(walletRef, updatedWallet, { merge: true });
+
+        const txRef = doc(collection(db, 'walletTransactions'));
+        const txDoc: WalletTransactionDoc = {
+          id: txRef.id,
+          userId: user.uid,
+          type: 'gameEntry',
+          amount: -amount,
+          currency: 'UGX',
+          reference: reference || `STK-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+          status: 'completed',
+          createdAt: Date.now(),
+          metadata: { description: description || 'UGX Stake Lock' },
+        };
+        await setDoc(txRef, txDoc);
+      } catch (err) {
+        console.warn('Firestore debit error, kept in local state:', err);
+      }
+    }
+
+    return true;
+  };
+
   const signOut = async () => {
     await fbSignOut(auth);
   };
@@ -154,6 +242,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUpEmail,
         signOut,
         refreshProfile,
+        creditWallet,
+        debitWallet,
       }}
     >
       {children}

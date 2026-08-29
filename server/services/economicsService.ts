@@ -11,7 +11,7 @@ export interface PesapalConfig {
 }
 
 export function getPesapalConfig(): PesapalConfig {
-  const isProd = process.env.PESAPAL_ENVIRONMENT === 'production';
+  const isSandbox = process.env.PESAPAL_ENVIRONMENT === 'sandbox';
   const appUrl = (process.env.APP_URL || 'https://ludo-arena-theta.vercel.app').replace(/\/$/, '');
   return {
     consumerKey: process.env.PESAPAL_CONSUMER_KEY || 'YdD5wiLJ3zCiIijV3Wb2xnV+7Sjugby+',
@@ -19,9 +19,9 @@ export function getPesapalConfig(): PesapalConfig {
     ipnId: process.env.PESAPAL_IPN_ID || '',
     callbackUrl: process.env.PESAPAL_CALLBACK_URL || `${appUrl}/api/pesapal/ipn`,
     cancellationUrl: process.env.PESAPAL_CANCELLATION_URL || `${appUrl}/`,
-    baseUrl: isProd
-      ? 'https://pay.pesapal.com/v3'
-      : 'https://cybqa.pesapal.com/pesapalv3',
+    baseUrl: isSandbox
+      ? 'https://cybqa.pesapal.com/pesapalv3'
+      : 'https://pay.pesapal.com/v3',
   };
 }
 

@@ -24,28 +24,48 @@ export const Dice3D: React.FC<Dice3DProps> = ({
 }) => {
   const config = (activeColor && COLOR_CONFIG[activeColor]) || COLOR_CONFIG.red;
 
-  // Helper to render pips on the dice face
-  const renderPips = (val: number) => {
-    const dotClasses = 'w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-slate-900 shadow-inner';
-    const redDotClass = 'w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-rose-600 shadow-inner';
+  // Exact 3D rotation angles to bring each target face to the front
+  const getCubeRotation = (val: number) => {
+    switch (val) {
+      case 1:
+        return 'rotateX(0deg) rotateY(0deg) rotateZ(0deg)';
+      case 2:
+        return 'rotateX(-90deg) rotateY(0deg) rotateZ(0deg)';
+      case 3:
+        return 'rotateX(0deg) rotateY(-90deg) rotateZ(0deg)';
+      case 4:
+        return 'rotateX(0deg) rotateY(90deg) rotateZ(0deg)';
+      case 5:
+        return 'rotateX(90deg) rotateY(0deg) rotateZ(0deg)';
+      case 6:
+        return 'rotateX(180deg) rotateY(0deg) rotateZ(0deg)';
+      default:
+        return 'rotateX(0deg) rotateY(0deg) rotateZ(0deg)';
+    }
+  };
+
+  // Helper to render pips on each specific dice face
+  const renderFacePips = (val: number) => {
+    const dotClasses = 'w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-slate-900 shadow-inner';
+    const redDotClass = 'w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-rose-600 shadow-inner';
 
     switch (val) {
       case 1:
         return (
           <div className="w-full h-full flex items-center justify-center">
-            <div className={redDotClass} />
+            <div className={`${redDotClass} scale-125`} />
           </div>
         );
       case 2:
         return (
-          <div className="w-full h-full flex justify-between p-1.5 sm:p-2">
+          <div className="w-full h-full flex justify-between p-1.5">
             <div className={`${dotClasses} self-start`} />
             <div className={`${dotClasses} self-end`} />
           </div>
         );
       case 3:
         return (
-          <div className="w-full h-full flex justify-between p-1.5 sm:p-2">
+          <div className="w-full h-full flex justify-between p-1.5">
             <div className={`${dotClasses} self-start`} />
             <div className={`${dotClasses} self-center`} />
             <div className={`${dotClasses} self-end`} />
@@ -53,7 +73,7 @@ export const Dice3D: React.FC<Dice3DProps> = ({
         );
       case 4:
         return (
-          <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-2 p-1.5 sm:p-2 place-items-center">
+          <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-1.5 p-1.5 place-items-center">
             <div className={dotClasses} />
             <div className={dotClasses} />
             <div className={dotClasses} />
@@ -62,8 +82,8 @@ export const Dice3D: React.FC<Dice3DProps> = ({
         );
       case 5:
         return (
-          <div className="w-full h-full relative p-1.5 sm:p-2">
-            <div className="grid grid-cols-2 grid-rows-2 gap-2 w-full h-full place-items-center">
+          <div className="w-full h-full relative p-1.5">
+            <div className="grid grid-cols-2 grid-rows-2 gap-1.5 w-full h-full place-items-center">
               <div className={dotClasses} />
               <div className={dotClasses} />
               <div className={dotClasses} />
@@ -76,7 +96,7 @@ export const Dice3D: React.FC<Dice3DProps> = ({
         );
       case 6:
         return (
-          <div className="w-full h-full grid grid-cols-2 grid-rows-3 gap-1 p-1.5 sm:p-2 place-items-center">
+          <div className="w-full h-full grid grid-cols-2 grid-rows-3 gap-1 p-1 place-items-center">
             <div className={dotClasses} />
             <div className={dotClasses} />
             <div className={dotClasses} />
@@ -90,9 +110,12 @@ export const Dice3D: React.FC<Dice3DProps> = ({
     }
   };
 
+  const faceBaseStyle =
+    'absolute inset-0 w-full h-full rounded-xl bg-gradient-to-br from-white via-slate-50 to-slate-200 border border-slate-300 shadow-md flex items-center justify-center select-none overflow-hidden';
+
   return (
     <div className="flex flex-col items-center gap-2.5">
-      {/* Dice Box */}
+      {/* 3D Dice Stage & Perspective Viewport */}
       <div
         id="interactive-dice"
         onClick={() => {
@@ -100,35 +123,89 @@ export const Dice3D: React.FC<Dice3DProps> = ({
             onRoll();
           }
         }}
-        className={`relative group select-none transition-all duration-300 ${
+        className={`relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center select-none perspective-800 ${
           canRoll && isCurrentPlayerTurn
-            ? 'cursor-pointer hover:scale-105 active:scale-95'
+            ? 'cursor-pointer group'
             : 'cursor-not-allowed opacity-90'
         }`}
       >
-        {/* Glow pulse behind dice */}
+        {/* Glow halo behind dice */}
         {canRoll && isCurrentPlayerTurn && (
           <div
-            className="absolute -inset-2 rounded-2xl opacity-60 blur-md animate-pulse"
+            className="absolute inset-1 rounded-full opacity-60 blur-lg animate-pulse pointer-events-none transition-all duration-300 group-hover:opacity-90 group-hover:scale-110"
             style={{ backgroundColor: config.accentHex }}
           />
         )}
 
-        {/* 3D Dice Face Container */}
+        {/* Dynamic 3D Ground Shadow */}
         <div
-          className={`relative w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 rounded-2xl bg-gradient-to-br from-white via-slate-50 to-slate-200 border-2 border-slate-300 shadow-xl flex items-center justify-center transition-transform ${
-            isRolling ? 'animate-dice-spin' : ''
+          className={`absolute bottom-0 w-12 h-3.5 sm:w-14 sm:h-4 rounded-[100%] bg-black/60 blur-[3px] pointer-events-none transition-all duration-300 ${
+            isRolling ? 'animate-dice-shadow' : ''
+          }`}
+        />
+
+        {/* 3D Rolling Cube */}
+        <div
+          className={`relative w-12 h-12 sm:w-14 sm:h-14 transform-style-3d transition-transform duration-500 ease-out ${
+            isRolling ? 'animate-dice-tumble' : ''
           }`}
           style={{
-            boxShadow:
-              '0 8px 16px -2px rgba(0, 0, 0, 0.25), inset 0 2px 4px rgba(255, 255, 255, 0.9), inset 0 -3px 5px rgba(0, 0, 0, 0.15)',
+            transform: isRolling ? undefined : getCubeRotation(value),
           }}
         >
-          {/* Beveled edge light */}
-          <div className="absolute top-1 left-1.5 right-1.5 h-1 bg-white/80 rounded-full blur-[0.5px]" />
+          {/* Face 1: Front (Z: +28px) */}
+          <div
+            className={faceBaseStyle}
+            style={{ transform: 'rotateY(0deg) translateZ(28px)' }}
+          >
+            <div className="absolute top-0.5 left-1 right-1 h-0.5 bg-white/90 rounded-full" />
+            {renderFacePips(1)}
+          </div>
 
-          {/* Dice pips */}
-          {renderPips(isRolling ? ((value % 6) + 1) : value)}
+          {/* Face 6: Back (Z: -28px / rotateX 180) */}
+          <div
+            className={faceBaseStyle}
+            style={{ transform: 'rotateX(180deg) translateZ(28px)' }}
+          >
+            <div className="absolute top-0.5 left-1 right-1 h-0.5 bg-white/90 rounded-full" />
+            {renderFacePips(6)}
+          </div>
+
+          {/* Face 3: Right (rotateY +90) */}
+          <div
+            className={faceBaseStyle}
+            style={{ transform: 'rotateY(90deg) translateZ(28px)' }}
+          >
+            <div className="absolute top-0.5 left-1 right-1 h-0.5 bg-white/90 rounded-full" />
+            {renderFacePips(3)}
+          </div>
+
+          {/* Face 4: Left (rotateY -90) */}
+          <div
+            className={faceBaseStyle}
+            style={{ transform: 'rotateY(-90deg) translateZ(28px)' }}
+          >
+            <div className="absolute top-0.5 left-1 right-1 h-0.5 bg-white/90 rounded-full" />
+            {renderFacePips(4)}
+          </div>
+
+          {/* Face 2: Top (rotateX +90) */}
+          <div
+            className={faceBaseStyle}
+            style={{ transform: 'rotateX(90deg) translateZ(28px)' }}
+          >
+            <div className="absolute top-0.5 left-1 right-1 h-0.5 bg-white/90 rounded-full" />
+            {renderFacePips(2)}
+          </div>
+
+          {/* Face 5: Bottom (rotateX -90) */}
+          <div
+            className={faceBaseStyle}
+            style={{ transform: 'rotateX(-90deg) translateZ(28px)' }}
+          >
+            <div className="absolute top-0.5 left-1 right-1 h-0.5 bg-white/90 rounded-full" />
+            {renderFacePips(5)}
+          </div>
         </div>
       </div>
 
@@ -155,12 +232,12 @@ export const Dice3D: React.FC<Dice3DProps> = ({
           {isRolling ? (
             <>
               <Dices className="w-3.5 h-3.5 animate-spin" />
-              <span>Rolling...</span>
+              <span>3D Rolling...</span>
             </>
           ) : canRoll && isCurrentPlayerTurn ? (
             <>
               <Sparkles className="w-3.5 h-3.5 animate-bounce" />
-              <span>Roll Dice</span>
+              <span>Roll 3D Dice</span>
             </>
           ) : (
             <span>Wait Turn</span>
@@ -184,3 +261,4 @@ export const Dice3D: React.FC<Dice3DProps> = ({
     </div>
   );
 };
+
