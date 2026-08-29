@@ -1,17 +1,18 @@
 package com.gamers.ludo
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
+import androidx.webkit.WebViewAssetLoader
 
 class MainActivity : AppCompatActivity() {
 
@@ -21,6 +22,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Enable immersive full-screen display for game experience
         window.setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
             WindowManager.LayoutParams.FLAG_FULLSCREEN
@@ -29,7 +31,16 @@ class MainActivity : AppCompatActivity() {
             View.SYSTEM_UI_FLAG_FULLSCREEN
             or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         )
+
+        // Set up secure WebViewAssetLoader to serve bundled web assets from android/app/src/main/assets/dist/
+        val assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(this))
+            .build()
 
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -41,17 +52,15 @@ class MainActivity : AppCompatActivity() {
             settings.mediaPlaybackRequiresUserGesture = false
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
+            settings.setSupportZoom(false)
 
             webViewClient = object : WebViewClient() {
-                override fun onReceivedError(
+                override fun shouldInterceptRequest(
                     view: WebView?,
-                    errorCode: Int,
-                    description: String?,
-                    failingUrl: String?
-                ) {
-                    if (failingUrl?.startsWith("file://") != true) {
-                        view?.loadUrl("file:///android_asset/dist/index.html")
-                    }
+                    request: WebResourceRequest?
+                ): WebResourceResponse? {
+                    val url = request?.url ?: return null
+                    return assetLoader.shouldInterceptRequest(url)
                 }
             }
             webChromeClient = WebChromeClient()
@@ -59,19 +68,8 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(webView)
 
-        val serverUrl = "https://ais-pre-z575rdksvgk352adj6uihh-104205062671.europe-west2.run.app"
-        if (isOnline()) {
-            webView.loadUrl(serverUrl)
-        } else {
-            webView.loadUrl("file:///android_asset/dist/index.html")
-        }
-    }
-
-    private fun isOnline(): Boolean {
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-        val network = cm.activeNetwork ?: return false
-        val capabilities = cm.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        // Load the bundled offline-first application from local assets
+        webView.loadUrl("https://appassets.androidplatform.net/assets/dist/index.html")
     }
 
     override fun onBackPressed() {
