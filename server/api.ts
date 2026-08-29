@@ -78,71 +78,77 @@ router.post('/pesapal/order', async (req: Request, res: Response) => {
       });
     }
 
-    const config = getPesapalConfig();
-    const merchantReference = `LUDO-${userId ? String(userId).slice(0, 6) : 'GUEST'}-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-
-    // Attempt live Pesapal 3.0 token retrieval
-    const token = await getPesapalAuthToken();
-    if (token) {
-      try {
-        const orderPayload = {
-          id: merchantReference,
-          currency: currency || 'UGX',
-          amount: numAmount,
-          description: description || 'Ludo UGX Wallet Deposit',
-          callback_url: config.callbackUrl,
-          cancellation_url: config.cancellationUrl,
-          notification_id: config.ipnId || undefined,
-          billing_address: {
-            email_address: email || 'gamer@ludo-arena.com',
-            phone_number: phone || '256700000000',
-            country_code: 'UG',
-            first_name: 'Ludo',
-            last_name: 'Player',
-          },
-        };
-
-        const pesapalRes = await fetch(`${config.baseUrl}/api/Transactions/SubmitOrder-Process`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(orderPayload),
-        });
-
-        const pesapalData = await pesapalRes.json();
-        if (pesapalRes.ok && pesapalData.redirect_url) {
-          return res.json({
-            success: true,
-            merchantReference,
-            pesapalTrackingId: pesapalData.order_tracking_id,
-            redirectUrl: pesapalData.redirect_url,
-            status: pesapalData.status || '200',
-            mode: process.env.PESAPAL_ENVIRONMENT === 'production' ? 'production' : 'sandbox',
-          });
-        }
-      } catch (pesapalErr) {
-        console.warn('[PESAPAL] SubmitOrder-Process failed, fallback to sandbox response:', pesapalErr);
-      }
+    if (!phone || String(phone).trim().length < 9) {
+      return res.status(400).json({
+        error: 'Please provide a valid Ugandan Mobile Money phone number (e.g., 0770000000 or 256770000000).',
+      });
     }
 
-    // Fallback sandbox / simulation response
-    const appUrl = (process.env.APP_URL || 'https://ludo-arena-theta.vercel.app').replace(/\/$/, '');
-    res.json({
+    // Format phone to 256 standard
+    let cleanPhone = String(phone).replace(/[^0-9]/g, '');
+    if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+      cleanPhone = '256' + cleanPhone.substring(1);
+    } else if (!cleanPhone.startsWith('256') && cleanPhone.length === 9) {
+      cleanPhone = '256' + cleanPhone;
+    }
+
+    const config = getPesapalConfig();
+    const merchantReference = `LUDO-${userId ? String(userId).slice(0, 6) : 'LIVE'}-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    // Attempt live Pesapal 3.0 authentication
+    const token = await getPesapalAuthToken();
+    if (!token) {
+      return res.status(502).json({
+        error: 'Pesapal Authentication Error: Unable to authenticate with Pesapal API. Please verify that PESAPAL_CONSUMER_KEY and PESAPAL_CONSUMER_SECRET are configured with your live merchant credentials.',
+      });
+    }
+
+    const orderPayload = {
+      id: merchantReference,
+      currency: currency || 'UGX',
+      amount: numAmount,
+      description: description || `Ludo Real-Money Wallet Deposit (UGX ${numAmount.toLocaleString()})`,
+      callback_url: config.callbackUrl,
+      cancellation_url: config.cancellationUrl,
+      notification_id: config.ipnId || undefined,
+      billing_address: {
+        email_address: email || 'payments@ludo-arena.com',
+        phone_number: cleanPhone,
+        country_code: 'UG',
+        first_name: 'Ludo',
+        last_name: 'Player',
+      },
+    };
+
+    const pesapalRes = await fetch(`${config.baseUrl}/api/Transactions/SubmitOrder-Process`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(orderPayload),
+    });
+
+    const pesapalData = await pesapalRes.json();
+    if (!pesapalRes.ok || !pesapalData.redirect_url) {
+      console.error('[PESAPAL] SubmitOrder error response:', pesapalData);
+      return res.status(pesapalRes.status || 500).json({
+        error: pesapalData.error?.message || pesapalData.message || 'Pesapal Gateway rejected order submission. Please check your Pesapal merchant configuration.',
+        details: pesapalData,
+      });
+    }
+
+    return res.json({
       success: true,
       merchantReference,
-      amount: numAmount,
-      currency: currency || 'UGX',
-      status: 'pending',
-      redirectUrl: `${appUrl}/payment/status?ref=${merchantReference}&amount=${numAmount}`,
-      pesapalTrackingId: `PESA-${crypto.randomBytes(6).toString('hex').toUpperCase()}`,
-      sandboxMode: process.env.PESAPAL_ENVIRONMENT !== 'production',
-      note: 'Pesapal 3.0 order initialized',
+      pesapalTrackingId: pesapalData.order_tracking_id,
+      redirectUrl: pesapalData.redirect_url,
+      status: pesapalData.status || '200',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to create Pesapal order' });
+    console.error('[PESAPAL] Order creation exception:', err);
+    res.status(500).json({ error: err.message || 'Failed to initialize live Pesapal order' });
   }
 });
 

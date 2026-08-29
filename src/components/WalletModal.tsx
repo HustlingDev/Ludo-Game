@@ -23,27 +23,6 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
 
   const currentAmount = customAmount ? parseInt(customAmount, 10) : selectedAmount;
 
-  const handleInstantDeposit = async (amountToDeposit: number) => {
-    setError(null);
-    setSuccess(null);
-    setLoading(true);
-
-    try {
-      if (amountToDeposit < GAME_ECONOMICS.minDepositUGX) {
-        throw new Error(`Minimum deposit is UGX ${GAME_ECONOMICS.minDepositUGX.toLocaleString()}`);
-      }
-
-      const simRef = `DEP-SIM-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
-      await creditWallet(amountToDeposit, `Simulated MoMo Deposit (${phoneNumber || 'MTN/Airtel'})`, simRef);
-
-      setSuccess(`Successfully credited UGX ${amountToDeposit.toLocaleString()} to your balance! (Ref: ${simRef})`);
-    } catch (err: any) {
-      setError(err.message || 'Deposit could not be processed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDepositPesapal = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -55,42 +34,41 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
         throw new Error(`Minimum deposit is UGX ${GAME_ECONOMICS.minDepositUGX.toLocaleString()}`);
       }
 
-      if (phoneNumber.trim().length < 9) {
-        throw new Error('Please enter a valid Ugandan Mobile Money phone number (MTN or Airtel).');
+      if (!phoneNumber || phoneNumber.trim().length < 9) {
+        throw new Error('Please enter your Ugandan MTN or Airtel Mobile Money phone number (e.g. 0770000000).');
       }
 
-      let orderSuccess = false;
-      try {
-        const res = await fetch('/api/pesapal/order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: currentAmount,
-            currency: 'UGX',
-            userId: user?.uid || 'production_user',
-            phone: phoneNumber,
-            description: 'UGX Ludo Wallet Live Deposit',
-          }),
-        });
+      const res = await fetch('/api/pesapal/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: currentAmount,
+          currency: 'UGX',
+          userId: user?.uid || 'player',
+          phone: phoneNumber,
+          description: `Ludo Arena Live Stake Deposit UGX ${currentAmount.toLocaleString()}`,
+        }),
+      });
 
-        if (res.ok) {
-          const data = await res.json();
-          setPesapalRedirect({
-            url: data.redirectUrl,
-            ref: data.merchantReference,
-          });
-          setSuccess(`Live deposit order created for UGX ${currentAmount.toLocaleString()} (Ref: ${data.merchantReference}). Complete the prompt on your phone or tap the checkout button.`);
-          orderSuccess = true;
+      const data = await res.json();
+
+      if (!res.ok || !data.success || !data.redirectUrl) {
+        throw new Error(data.error || 'Failed to connect to Pesapal 3.0 Gateway. Please check your network or Pesapal API credentials.');
+      }
+
+      setPesapalRedirect({
+        url: data.redirectUrl,
+        ref: data.merchantReference,
+      });
+
+      setSuccess(`Live Pesapal Order Created (Ref: ${data.merchantReference}). Redirecting to payment gateway to trigger phone prompt...`);
+
+      // Automatically redirect to Pesapal secure payment portal so the player gets the USSD prompt on their phone
+      setTimeout(() => {
+        if (data.redirectUrl) {
+          window.location.href = data.redirectUrl;
         }
-      } catch {
-        // Fallback in case of local network restriction
-      }
-
-      if (!orderSuccess) {
-        const ref = `MOMO-UGX-${Date.now().toString().slice(-6)}`;
-        await creditWallet(currentAmount, `MTN/Airtel MoMo Deposit (${phoneNumber})`, ref);
-        setSuccess(`UGX ${currentAmount.toLocaleString()} successfully credited to your production wallet! Ref: ${ref}`);
-      }
+      }, 1200);
     } catch (err: any) {
       setError(err.message || 'Deposit initialization failed');
     } finally {
