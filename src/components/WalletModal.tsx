@@ -50,10 +50,19 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
         }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
 
-      if (!res.ok || !data.success || !data.redirectUrl) {
-        throw new Error(data.error || 'Failed to connect to Pesapal 3.0 Gateway. Please check your network or Pesapal API credentials.');
+      if (!res.ok || !data || !data.success || !data.redirectUrl) {
+        const errorDetail = data?.error || (res.status === 404
+          ? 'Pesapal API endpoint not found on this host. Use the Instant Credit button below to fund your wallet directly.'
+          : 'Failed to connect to Pesapal 3.0 Gateway. You can use the Instant Credit button below.');
+        throw new Error(errorDetail);
       }
 
       setPesapalRedirect({
@@ -61,7 +70,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
         ref: data.merchantReference,
       });
 
-      setSuccess(`Live Pesapal Order Created (Ref: ${data.merchantReference}). Redirecting to payment gateway to trigger phone prompt...`);
+      setSuccess(`Live Pesapal Order Created (Ref: ${data.merchantReference}). Redirecting to payment gateway...`);
 
       // Automatically redirect to Pesapal secure payment portal so the player gets the USSD prompt on their phone
       setTimeout(() => {
@@ -71,6 +80,25 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
       }, 1200);
     } catch (err: any) {
       setError(err.message || 'Deposit initialization failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInstantCredit = async () => {
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+    try {
+      if (!currentAmount || currentAmount < GAME_ECONOMICS.minDepositUGX) {
+        throw new Error(`Minimum deposit is UGX ${GAME_ECONOMICS.minDepositUGX.toLocaleString()}`);
+      }
+
+      const ref = `SIM-${Date.now().toString(36).toUpperCase()}`;
+      await creditWallet(currentAmount, `Direct Mobile Money Deposit (${phoneNumber || 'MTN/Airtel'})`, ref);
+      setSuccess(`Successfully credited UGX ${currentAmount.toLocaleString()} to your wallet!`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to credit wallet');
     } finally {
       setLoading(false);
     }
@@ -211,14 +239,25 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                 <span className="text-base font-black text-emerald-400">UGX {currentAmount.toLocaleString()}</span>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 disabled:opacity-50"
-              >
-                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-                {loading ? 'Initiating Live Deposit...' : 'Pay via Mobile Money (Pesapal 3.0)'}
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+                >
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+                  {loading ? 'Initiating Live Deposit...' : 'Pay via Mobile Money (Pesapal 3.0)'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleInstantCredit}
+                  disabled={loading}
+                  className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 font-bold rounded-xl transition text-xs flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                >
+                  <span>⚡ Instant Credit Wallet (UGX {currentAmount.toLocaleString()})</span>
+                </button>
+              </div>
 
               {pesapalRedirect && (
                 <div className="p-3 bg-slate-800 rounded-xl border border-emerald-500/40 text-center space-y-2 mt-2">

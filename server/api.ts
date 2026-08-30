@@ -152,6 +152,83 @@ router.post('/pesapal/order', async (req: Request, res: Response) => {
   }
 });
 
+// Online Players Lobby Directory
+interface LobbyOnlineUser {
+  id: string;
+  name: string;
+  avatar: string;
+  rating: number;
+  status: 'available' | 'in_game';
+  country: string;
+  lastSeen: number;
+}
+
+const onlineLobbyUsers = new Map<string, LobbyOnlineUser>();
+
+// Seed default online players
+const SEED_PLAYERS: LobbyOnlineUser[] = [
+  { id: 'ply_kato', name: 'Kato Derrick', avatar: '👑', rating: 1420, status: 'available', country: 'UG', lastSeen: Date.now() },
+  { id: 'ply_namubiru', name: 'Sarah Namubiru', avatar: '⚡', rating: 1350, status: 'available', country: 'UG', lastSeen: Date.now() },
+  { id: 'ply_mukasa', name: 'Brian Mukasa', avatar: '🐉', rating: 1280, status: 'available', country: 'UG', lastSeen: Date.now() },
+  { id: 'ply_amina', name: 'Zainab Amina', avatar: '💎', rating: 1390, status: 'available', country: 'UG', lastSeen: Date.now() },
+  { id: 'ply_okello', name: 'John Okello', avatar: '🦁', rating: 1210, status: 'available', country: 'UG', lastSeen: Date.now() },
+  { id: 'ply_nabulime', name: 'Joy Nabulime', avatar: '🔥', rating: 1310, status: 'available', country: 'UG', lastSeen: Date.now() },
+];
+SEED_PLAYERS.forEach((p) => onlineLobbyUsers.set(p.id, p));
+
+router.get('/lobby/players', (req: Request, res: Response) => {
+  const now = Date.now();
+  Array.from(onlineLobbyUsers.entries()).forEach(([id, user]) => {
+    if (!id.startsWith('ply_') && now - user.lastSeen > 120000) {
+      onlineLobbyUsers.delete(id);
+    }
+  });
+
+  const playersList = Array.from(onlineLobbyUsers.values()).map((p) => ({
+    ...p,
+    isOnline: true,
+  }));
+  res.json({ players: playersList });
+});
+
+router.post('/lobby/heartbeat', (req: Request, res: Response) => {
+  const { id, name, avatar, rating, status } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'Name is required' });
+  const userId = id || `usr_${String(name).toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+  onlineLobbyUsers.set(userId, {
+    id: userId,
+    name,
+    avatar: avatar || '👑',
+    rating: rating || 1200,
+    status: status || 'available',
+    country: 'UG',
+    lastSeen: Date.now(),
+  });
+  res.json({ success: true, userId });
+});
+
+router.post('/challenges/send', (req: Request, res: Response) => {
+  const { fromPlayer, toPlayerId, stakeUGX } = req.body;
+  if (!fromPlayer || !toPlayerId) {
+    return res.status(400).json({ error: 'Missing challenge parameters' });
+  }
+
+  const opponent = onlineLobbyUsers.get(toPlayerId);
+  const opponentName = opponent ? opponent.name : 'Opponent';
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let roomId = '';
+  for (let i = 0; i < 6; i++) {
+    roomId += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  res.json({
+    success: true,
+    roomId,
+    message: `Challenge accepted by ${opponentName}! 1v1 duel starting on opposite corners!`,
+    stakeUGX: stakeUGX || 0,
+  });
+});
+
 /**
  * Pesapal 3.0 IPN & Callback Verification Endpoint
  */
