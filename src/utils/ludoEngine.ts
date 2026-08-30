@@ -1,6 +1,21 @@
 import { GameState, Player, PlayerColor, Token, GameMode, GameStatus } from '../types';
 import { START_TRACK_INDEX, isSafeTrackIndex } from './boardCoordinates';
 
+export function getOppositeColor(color: PlayerColor): PlayerColor {
+  switch (color) {
+    case 'red':
+      return 'yellow';
+    case 'yellow':
+      return 'red';
+    case 'green':
+      return 'blue';
+    case 'blue':
+      return 'green';
+    default:
+      return 'yellow';
+  }
+}
+
 export function createDefaultTokens(color: PlayerColor): Token[] {
   return [0, 1, 2, 3].map((id) => ({
     id,
@@ -314,33 +329,12 @@ export function applyDiceRoll(
     };
   }
 
-  // Consecutive sixes check
+  // Consecutive sixes tracking (3 consecutive sixes allowed with full turn bonus)
   let consecutiveSixes = diceValue === 6 ? state.consecutiveSixes + 1 : 0;
-  let moveDesc = `${activePlayer.name} rolled a ${diceValue}!`;
-
-  if (consecutiveSixes >= 3) {
-    // Penalty! 3 consecutive sixes loses turn
-    const nextIdx = getNextActiveColorIndex(
-      state.activeColors,
-      state.activeColorIndex,
-      state.players
-    );
-    return {
-      newState: {
-        ...state,
-        diceValue,
-        hasRolled: false,
-        canRoll: true,
-        validTokenMoves: [],
-        mustSelectToken: false,
-        consecutiveSixes: 0,
-        activeColorIndex: nextIdx,
-        turnTimeRemaining: state.turnTimeLimit,
-        lastMoveDescription: `⚠️ 3 consecutive sixes! ${activePlayer.name} forfeited the turn.`,
-      },
-      hasValidMoves: false,
-    };
-  }
+  let moveDesc =
+    consecutiveSixes >= 3
+      ? `🔥 Triple Sixes! ${activePlayer.name} rolled a 6 and continues!`
+      : `${activePlayer.name} rolled a ${diceValue}!`;
 
   const validMoves = getValidTokenMoves(activePlayer, diceValue);
 

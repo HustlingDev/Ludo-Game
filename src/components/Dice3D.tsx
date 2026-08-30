@@ -232,12 +232,12 @@ export const Dice3D: React.FC<Dice3DProps> = ({
           {isRolling ? (
             <>
               <Dices className="w-3.5 h-3.5 animate-spin" />
-              <span>3D Rolling...</span>
+              <span>Rolling...</span>
             </>
           ) : canRoll && isCurrentPlayerTurn ? (
             <>
               <Sparkles className="w-3.5 h-3.5 animate-bounce" />
-              <span>Roll 3D Dice</span>
+              <span>Roll Dice</span>
             </>
           ) : (
             <span>Wait Turn</span>
@@ -252,8 +252,8 @@ export const Dice3D: React.FC<Dice3DProps> = ({
               {consecutiveSixes === 1
                 ? 'Bonus Roll!'
                 : consecutiveSixes === 2
-                ? '🔥 Double 6! (3rd loses turn)'
-                : 'Turn Forfeited!'}
+                ? '🔥 Double 6! Bonus Roll!'
+                : `🔥 ${consecutiveSixes} Sixes Streak! Keep Rolling!`}
             </span>
           </div>
         )}

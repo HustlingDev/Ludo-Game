@@ -17,6 +17,8 @@ import {
 import {
   createInitialGameState,
   createInitialPlayer,
+  createDefaultTokens,
+  getOppositeColor,
   applyDiceRoll,
   applyTokenMove,
   selectBestBotMove,
@@ -68,10 +70,17 @@ function sendToClient(ws: WebSocket, action: WSServerAction) {
   }
 }
 
-function getAvailableColor(existingPlayers: Player[], preferred?: PlayerColor): PlayerColor {
+function getAvailableColor(existingPlayers: Player[], preferred?: PlayerColor, is2Player: boolean = false): PlayerColor {
   const taken = new Set(existingPlayers.map((p) => p.color));
+  if (is2Player && existingPlayers.length === 1) {
+    return getOppositeColor(existingPlayers[0].color);
+  }
   if (preferred && !taken.has(preferred)) {
     return preferred;
+  }
+  if (existingPlayers.length === 1) {
+    const opp = getOppositeColor(existingPlayers[0].color);
+    if (!taken.has(opp)) return opp;
   }
   return ALL_COLORS.find((c) => !taken.has(c)) || 'red';
 }
@@ -239,6 +248,126 @@ async function startServer() {
 
   // Platform & Economics API Routes
   app.use('/api', apiRouter);
+
+  // Online Players Directory & Challenge System
+  interface LobbyOnlineUser {
+    id: string;
+    name: string;
+    avatar: string;
+    rating: number;
+    status: 'available' | 'in_game';
+    country: string;
+    lastSeen: number;
+  }
+
+  const onlineLobbyUsers = new Map<string, LobbyOnlineUser>();
+
+  // Seed online players
+  const SEED_PLAYERS: LobbyOnlineUser[] = [
+    { id: 'ply_kato', name: 'Kato Derrick', avatar: '👑', rating: 1420, status: 'available', country: 'UG', lastSeen: Date.now() },
+    { id: 'ply_namubiru', name: 'Sarah Namubiru', avatar: '⚡', rating: 1350, status: 'available', country: 'UG', lastSeen: Date.now() },
+    { id: 'ply_mukasa', name: 'Brian Mukasa', avatar: '🐉', rating: 1280, status: 'available', country: 'UG', lastSeen: Date.now() },
+    { id: 'ply_amina', name: 'Zainab Amina', avatar: '💎', rating: 1390, status: 'available', country: 'UG', lastSeen: Date.now() },
+    { id: 'ply_okello', name: 'John Okello', avatar: '🦁', rating: 1210, status: 'available', country: 'UG', lastSeen: Date.now() },
+    { id: 'ply_nabulime', name: 'Joy Nabulime', avatar: '🔥', rating: 1310, status: 'available', country: 'UG', lastSeen: Date.now() },
+  ];
+  SEED_PLAYERS.forEach((p) => onlineLobbyUsers.set(p.id, p));
+
+  app.get('/api/lobby/players', (req, res) => {
+    const now = Date.now();
+    // Clean stale users (older than 2 minutes, except seed users)
+    Array.from(onlineLobbyUsers.entries()).forEach(([id, user]) => {
+      if (!id.startsWith('ply_') && now - user.lastSeen > 120000) {
+        onlineLobbyUsers.delete(id);
+      }
+    });
+
+    const playersList = Array.from(onlineLobbyUsers.values()).map((p) => ({
+      ...p,
+      isOnline: true,
+    }));
+    res.json({ players: playersList });
+  });
+
+  app.post('/api/lobby/heartbeat', (req, res) => {
+    const { id, name, avatar, rating, status } = req.body || {};
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    const userId = id || `usr_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    onlineLobbyUsers.set(userId, {
+      id: userId,
+      name,
+      avatar: avatar || '👑',
+      rating: rating || 1200,
+      status: status || 'available',
+      country: 'UG',
+      lastSeen: Date.now(),
+    });
+    res.json({ success: true, userId });
+  });
+
+  // Direct 1v1 Challenge Endpoint
+  app.post('/api/challenges/send', (req, res) => {
+    const { fromPlayer, toPlayerId, stakeUGX } = req.body;
+    if (!fromPlayer || !toPlayerId) {
+      return res.status(400).json({ error: 'Missing challenge parameters' });
+    }
+
+    const opponent = onlineLobbyUsers.get(toPlayerId);
+    const opponentName = opponent ? opponent.name : 'Opponent';
+
+    // Create 1v1 Room where players are placed on opposite sides:
+    // Host gets 'red', opponent gets 'yellow' (diagonally opposite across 15x15 board)
+    const roomId = generateRoomCode();
+    const hostColor: PlayerColor = fromPlayer.preferredColor || 'red';
+    const opponentColor: PlayerColor = getOppositeColor(hostColor);
+
+    const hostPlayer = createInitialPlayer(
+      fromPlayer.id || `host_${Date.now()}`,
+      fromPlayer.name,
+      fromPlayer.avatar || '👑',
+      hostColor,
+      'human',
+      'medium',
+      true
+    );
+
+    const oppPlayer = createInitialPlayer(
+      toPlayerId,
+      opponentName,
+      opponent?.avatar || '🎯',
+      opponentColor,
+      toPlayerId.startsWith('ply_') ? 'bot' : 'human',
+      'medium',
+      false
+    );
+
+    const gameState = createInitialGameState(
+      roomId,
+      'online_multiplayer',
+      [hostPlayer, oppPlayer],
+      30
+    );
+    gameState.isCompetitive = Boolean(stakeUGX && stakeUGX > 0);
+    gameState.status = 'playing'; // Instantly launch match
+
+    const room: ServerRoom = {
+      id: roomId,
+      state: gameState,
+      hostPlayerId: hostPlayer.id,
+      clients: new Map(),
+      chatHistory: [],
+    };
+
+    rooms.set(roomId, room);
+    startRoomTimer(room);
+
+    res.json({
+      success: true,
+      roomId,
+      message: `Challenge accepted by ${opponentName}! Opponents positioned on opposite corners (${hostColor.toUpperCase()} vs ${opponentColor.toUpperCase()}).`,
+      roomState: gameState,
+    });
+  });
 
   app.get('/api/rooms/public', (req, res) => {
     const publicRooms = Array.from(rooms.values())
@@ -479,7 +608,7 @@ async function startServer() {
         if (!room) return;
         if (room.state.players.length < 2) {
           // Auto add a bot if single player started
-          const color = getAvailableColor(room.state.players);
+          const color = getAvailableColor(room.state.players, undefined, true);
           const botPlayer = createInitialPlayer(
             `bot_${color}`,
             `Bot ${color.toUpperCase()}`,
@@ -490,6 +619,17 @@ async function startServer() {
             false
           );
           room.state.players.push(botPlayer);
+        }
+
+        // When two players are versing each other, ensure they are positioned on opposite sides of the board!
+        if (room.state.players.length === 2) {
+          const p1 = room.state.players[0];
+          const p2 = room.state.players[1];
+          const oppColor = getOppositeColor(p1.color);
+          if (p2.color !== oppColor) {
+            p2.color = oppColor;
+            p2.tokens = createDefaultTokens(oppColor);
+          }
         }
 
         room.state = createInitialGameState(

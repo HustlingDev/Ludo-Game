@@ -21,6 +21,7 @@ import {
 import {
   createInitialGameState,
   createInitialPlayer,
+  getOppositeColor,
   applyDiceRoll,
   applyTokenMove,
   getValidTokenMoves,
@@ -709,7 +710,18 @@ export function useLudoGame() {
     }[]
   ) => {
     sounds.playButton();
-    const players: Player[] = configs.map((c, idx) =>
+    let adjustedConfigs = [...configs];
+    // When two players are versing each other, their positions must be on the opposite side of the board!
+    if (adjustedConfigs.length === 2) {
+      const p1Color = adjustedConfigs[0].color;
+      const oppColor = getOppositeColor(p1Color);
+      adjustedConfigs[1] = {
+        ...adjustedConfigs[1],
+        color: oppColor,
+      };
+    }
+
+    const players: Player[] = adjustedConfigs.map((c, idx) =>
       createInitialPlayer(
         `p_${c.color}`,
         c.name,

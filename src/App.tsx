@@ -21,7 +21,6 @@ import { LeaderboardModal } from './components/LeaderboardModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { WalletModal } from './components/WalletModal';
 import { AuthModal } from './components/AuthModal';
-import { AdminModal } from './components/AdminModal';
 import { MainLobbyView } from './components/MainLobbyView';
 import { BottomNav } from './components/BottomNav';
 
@@ -164,8 +163,6 @@ export default function App() {
             onOpenLeaderboard={() => setActiveModal('leaderboard')}
             onOpenRules={() => setActiveModal('rules')}
             onOpenStats={() => setActiveModal('stats')}
-            onOpenAdmin={() => setActiveModal('admin')}
-            isAdmin={true}
           />
         ) : gameState.mode === 'online_multiplayer' && gameState.status === 'waiting' ? (
           /* CASE 2: Waiting in Online Room Lobby */
@@ -294,26 +291,42 @@ export default function App() {
           <div className="w-full flex flex-col lg:flex-row items-center justify-center gap-3 sm:gap-6">
             {/* Left Player Column */}
             <div className="w-full lg:w-56 flex lg:flex-col gap-2 justify-between order-2 lg:order-1">
-              <div className="flex-1 lg:flex-none">
-                <PlayerCard
-                  player={gameState.players.find((p) => p.color === 'red')}
-                  color="red"
-                  isActive={activeColor === 'red'}
-                  isMe={myPlayerId === gameState.players.find((p) => p.color === 'red')?.id}
-                  timeRemaining={gameState.turnTimeRemaining}
-                  timeLimit={gameState.turnTimeLimit}
-                />
-              </div>
-              <div className="flex-1 lg:flex-none">
-                <PlayerCard
-                  player={gameState.players.find((p) => p.color === 'blue')}
-                  color="blue"
-                  isActive={activeColor === 'blue'}
-                  isMe={myPlayerId === gameState.players.find((p) => p.color === 'blue')?.id}
-                  timeRemaining={gameState.turnTimeRemaining}
-                  timeLimit={gameState.turnTimeLimit}
-                />
-              </div>
+              {gameState.players.length === 2 ? (
+                /* In 2-player match: Player 1 on Left side */
+                <div className="w-full">
+                  <PlayerCard
+                    player={gameState.players[0]}
+                    color={gameState.players[0]?.color || 'red'}
+                    isActive={activeColor === gameState.players[0]?.color}
+                    isMe={myPlayerId === gameState.players[0]?.id}
+                    timeRemaining={gameState.turnTimeRemaining}
+                    timeLimit={gameState.turnTimeLimit}
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="flex-1 lg:flex-none">
+                    <PlayerCard
+                      player={gameState.players.find((p) => p.color === 'red')}
+                      color="red"
+                      isActive={activeColor === 'red'}
+                      isMe={myPlayerId === gameState.players.find((p) => p.color === 'red')?.id}
+                      timeRemaining={gameState.turnTimeRemaining}
+                      timeLimit={gameState.turnTimeLimit}
+                    />
+                  </div>
+                  <div className="flex-1 lg:flex-none">
+                    <PlayerCard
+                      player={gameState.players.find((p) => p.color === 'blue')}
+                      color="blue"
+                      isActive={activeColor === 'blue'}
+                      isMe={myPlayerId === gameState.players.find((p) => p.color === 'blue')?.id}
+                      timeRemaining={gameState.turnTimeRemaining}
+                      timeLimit={gameState.turnTimeLimit}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Center: Interactive Board & Action Bar */}
@@ -382,8 +395,8 @@ export default function App() {
                 onMoveToken={handleMoveToken}
               />
 
-              {/* Interactive 3D Dice and Guidance Bar */}
-              <div className="w-full bg-slate-900/90 backdrop-blur-md border border-slate-800/90 rounded-3xl p-2.5 sm:p-4 shadow-2xl flex items-center justify-around gap-2 sm:gap-3">
+              {/* Interactive 3D Dice and In-Match Emoji Reactions Panel */}
+              <div className="w-full bg-slate-900/90 backdrop-blur-md border border-slate-800/90 rounded-3xl p-2.5 sm:p-4 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
                 {/* 3D Dice and Roll Button */}
                 <Dice3D
                   value={gameState.diceValue}
@@ -395,49 +408,74 @@ export default function App() {
                   onRoll={handleRollDice}
                 />
 
-                {/* Move Guidance Tip */}
-                <div className="flex-1 max-w-[240px] text-left p-2.5 rounded-2xl bg-slate-950/60 border border-slate-800">
-                  <span className="text-[10px] uppercase font-bold text-amber-400 flex items-center gap-1 mb-1">
-                    <Sparkles className="w-3 h-3" />
-                    How to Move
-                  </span>
-                  <p className="text-[11px] text-slate-300 leading-tight">
-                    {gameState.mustSelectToken && isMyTurn ? (
-                      <span className="text-emerald-400 font-semibold animate-pulse">
-                        👉 Drag a glowing pawn to the target tile, or tap it to move forward!
-                      </span>
-                    ) : gameState.canRoll && isMyTurn ? (
-                      <span>Roll the dice by tapping the cube or Roll button above!</span>
-                    ) : (
-                      <span>Waiting for {activePlayer?.name} to finish turn...</span>
-                    )}
-                  </p>
+                {/* In-Match Emoji Reaction & Quick Taunts Panel */}
+                <div className="flex-1 w-full max-w-xs flex flex-col items-center sm:items-end gap-1.5 p-2 rounded-2xl bg-slate-950/70 border border-slate-800">
+                  <div className="w-full flex items-center justify-between px-1">
+                    <span className="text-[10px] uppercase font-bold text-amber-400 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      <span>In-Game Reactions</span>
+                    </span>
+                    <button
+                      onClick={() => setIsChatOpen(true)}
+                      className="text-[10px] font-bold text-sky-400 hover:text-sky-300 transition"
+                    >
+                      Chat 💬
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1">
+                    {['🔥', '😂', '😭', '👏', '👑', '💥', '🎲', '😎'].map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleSendEmoji(emoji)}
+                        className="w-8 h-8 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-lg border border-slate-700/60 transition shadow-sm"
+                        title={`Send ${emoji} to opponent`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Right Player Column */}
             <div className="w-full lg:w-56 flex lg:flex-col gap-2 justify-between order-3">
-              <div className="flex-1 lg:flex-none">
-                <PlayerCard
-                  player={gameState.players.find((p) => p.color === 'green')}
-                  color="green"
-                  isActive={activeColor === 'green'}
-                  isMe={myPlayerId === gameState.players.find((p) => p.color === 'green')?.id}
-                  timeRemaining={gameState.turnTimeRemaining}
-                  timeLimit={gameState.turnTimeLimit}
-                />
-              </div>
-              <div className="flex-1 lg:flex-none">
-                <PlayerCard
-                  player={gameState.players.find((p) => p.color === 'yellow')}
-                  color="yellow"
-                  isActive={activeColor === 'yellow'}
-                  isMe={myPlayerId === gameState.players.find((p) => p.color === 'yellow')?.id}
-                  timeRemaining={gameState.turnTimeRemaining}
-                  timeLimit={gameState.turnTimeLimit}
-                />
-              </div>
+              {gameState.players.length === 2 ? (
+                /* In 2-player match: Player 2 on Right (Opposite) side */
+                <div className="w-full">
+                  <PlayerCard
+                    player={gameState.players[1]}
+                    color={gameState.players[1]?.color || 'yellow'}
+                    isActive={activeColor === gameState.players[1]?.color}
+                    isMe={myPlayerId === gameState.players[1]?.id}
+                    timeRemaining={gameState.turnTimeRemaining}
+                    timeLimit={gameState.turnTimeLimit}
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="flex-1 lg:flex-none">
+                    <PlayerCard
+                      player={gameState.players.find((p) => p.color === 'green')}
+                      color="green"
+                      isActive={activeColor === 'green'}
+                      isMe={myPlayerId === gameState.players.find((p) => p.color === 'green')?.id}
+                      timeRemaining={gameState.turnTimeRemaining}
+                      timeLimit={gameState.turnTimeLimit}
+                    />
+                  </div>
+                  <div className="flex-1 lg:flex-none">
+                    <PlayerCard
+                      player={gameState.players.find((p) => p.color === 'yellow')}
+                      color="yellow"
+                      isActive={activeColor === 'yellow'}
+                      isMe={myPlayerId === gameState.players.find((p) => p.color === 'yellow')?.id}
+                      timeRemaining={gameState.turnTimeRemaining}
+                      timeLimit={gameState.turnTimeLimit}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -455,7 +493,6 @@ export default function App() {
         onOpenHistory={() => setActiveModal('history')}
         onOpenSettings={() => setActiveModal('settings')}
         onOpenNotifications={() => setActiveModal('notifications')}
-        onOpenAdmin={() => setActiveModal('admin')}
       />
 
       {/* Modals & Overlays */}
@@ -474,12 +511,6 @@ export default function App() {
         onStartLocalGame={handleStartLocalGame}
         onCreateOnlineRoom={handleCreateOnlineRoom}
         onJoinOnlineRoom={handleJoinOnlineRoom}
-      />
-
-      <AdminModal
-        isOpen={activeModal === 'admin'}
-        onClose={() => setActiveModal(null)}
-        adminEmail="hackerugg06@gmail.com"
       />
 
       <SettingsModal

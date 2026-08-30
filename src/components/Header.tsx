@@ -17,7 +17,6 @@ import {
   Sparkles,
   Wallet,
   User,
-  Shield,
 } from 'lucide-react';
 import { sounds } from '../utils/audio';
 import { useAuth } from '../context/AuthContext';
@@ -43,7 +42,6 @@ interface HeaderProps {
   onOpenNotifications: () => void;
   onOpenWallet?: () => void;
   onOpenAuth?: () => void;
-  onOpenAdmin?: () => void;
   onExitToLobby?: () => void;
 }
 
@@ -281,20 +279,6 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <BookOpen className="w-4 h-4" />
         </button>
-
-        {/* Admin Console */}
-        {onOpenAdmin && (
-          <button
-            onClick={() => {
-              sounds.playButton();
-              onOpenAdmin();
-            }}
-            className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 transition"
-            title="Admin Dashboard"
-          >
-            <Shield className="w-4 h-4" />
-          </button>
-        )}
 
         {/* Settings */}
         <button
