@@ -101,7 +101,7 @@ export default function App() {
     if (userProfile && userProfile.username) {
       setProfile({
         name: userProfile.username,
-        avatar: userProfile.avatarEmoji || '👑',
+        avatar: userProfile.avatar || '👑',
         preferredColor: 'red',
         rating: userProfile.rating || 1200,
       });
