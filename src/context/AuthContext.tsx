@@ -3,6 +3,8 @@ import {
   User,
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut as fbSignOut,
 } from 'firebase/auth';
@@ -18,6 +20,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isProfileComplete: boolean;
   signInGoogle: () => Promise<void>;
+  signInGoogleRedirect: () => Promise<void>;
   updateUserProfile: (data: Partial<UserProfileDoc>) => Promise<void>;
   updatePhoneNumber: (phone: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -65,6 +68,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync user profile & wallet upon Auth state change
   useEffect(() => {
+    // Check if coming back from a redirect flow
+    getRedirectResult(auth).catch((err) => {
+      console.warn('Redirect auth result check:', err);
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -184,6 +192,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw err;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const signInGoogleRedirect = async () => {
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('email');
+      provider.addScope('profile');
+      provider.setCustomParameters({
+        prompt: 'select_account',
+      });
+      await signInWithRedirect(auth, provider);
+    } catch (err: any) {
+      console.error('Firebase Google sign-in redirect error:', err);
+      setLoading(false);
+      throw err;
     }
   };
 
@@ -356,6 +381,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated,
         isProfileComplete,
         signInGoogle,
+        signInGoogleRedirect,
         updateUserProfile,
         updatePhoneNumber,
         signOut,

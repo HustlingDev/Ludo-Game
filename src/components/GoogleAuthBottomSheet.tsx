@@ -27,7 +27,15 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
   isOpen,
   onSuccess,
 }) => {
-  const { user, userProfile, signInGoogle, updateUserProfile, signOut, isProfileComplete } = useAuth();
+  const {
+    user,
+    userProfile,
+    signInGoogle,
+    signInGoogleRedirect,
+    updateUserProfile,
+    signOut,
+    isProfileComplete,
+  } = useAuth();
 
   // Profile Form state
   const [avatar, setAvatar] = useState<string>('👑');
@@ -38,6 +46,7 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
   const [termsAccepted, setTermsAccepted] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string>('');
+  const [showDomainHelp, setShowDomainHelp] = useState<boolean>(false);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
 
   // Initialize form values from user & profile
@@ -103,18 +112,38 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
       console.error('Google Sign In Error:', err);
       if (err?.code === 'auth/unauthorized-domain' || err?.message?.includes('auth/unauthorized-domain')) {
         setAuthError(
-          `Domain "${window.location.hostname}" is not authorized in Firebase. Add "${window.location.hostname}" to Firebase Console -> Authentication -> Settings -> Authorized domains.`
+          `Domain "${window.location.hostname}" is not recognized yet by Firebase Auth.`
         );
+        setShowDomainHelp(true);
       } else if (err?.code === 'auth/popup-closed-by-user') {
-        setAuthError('Sign in window was closed. Please try again.');
+        setAuthError('Sign in window was closed. Please tap again to sign in.');
       } else if (err?.code === 'auth/cancelled-popup-request') {
-        setAuthError('Sign in process was cancelled.');
+        setAuthError('Sign in request was cancelled. Tap again.');
       } else if (err?.code === 'auth/popup-blocked') {
-        setAuthError('Popup was blocked by your browser. Please allow popups for this site and tap sign in again.');
+        setAuthError('Popup was blocked by your browser. Use Google Redirect sign-in below.');
       } else {
-        setAuthError(err?.message || 'Could not complete Google sign-in. Please try again.');
+        setAuthError(err?.message || 'Could not complete Google sign-in. Try redirect mode.');
       }
     } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignInRedirectClick = async () => {
+    setAuthError('');
+    setIsSubmitting(true);
+    try {
+      await signInGoogleRedirect();
+    } catch (err: any) {
+      console.error('Google Redirect Error:', err);
+      if (err?.code === 'auth/unauthorized-domain' || err?.message?.includes('auth/unauthorized-domain')) {
+        setAuthError(
+          `Domain "${window.location.hostname}" is not recognized yet by Firebase Auth.`
+        );
+        setShowDomainHelp(true);
+      } else {
+        setAuthError(err?.message || 'Could not initiate redirect sign-in.');
+      }
       setIsSubmitting(false);
     }
   };
@@ -255,18 +284,37 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                   </div>
                 </div>
 
-                {/* Error Banner */}
+                {/* Error Banner & Domain Diagnostics */}
                 {authError && (
-                  <div className="p-3 bg-rose-950/60 border border-rose-500/50 rounded-2xl flex items-start gap-2.5 text-xs text-rose-300 animate-fade-in">
-                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-bold">Sign-in Error</p>
-                      <p className="text-[11px] text-rose-300/90">{authError}</p>
+                  <div className="p-3.5 bg-rose-950/70 border border-rose-500/60 rounded-2xl space-y-2 text-xs text-rose-300 animate-fade-in">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-bold text-rose-200">Sign-in Notice</p>
+                        <p className="text-[11px] text-rose-300/90">{authError}</p>
+                      </div>
                     </div>
+
+                    {showDomainHelp && (
+                      <div className="pt-2 border-t border-rose-900/60 space-y-2 text-[11px] text-slate-200">
+                        <p className="font-bold text-amber-300">Quick 3-Point Checklist:</p>
+                        <ol className="list-decimal pl-4 space-y-1 text-slate-300">
+                          <li>
+                            Make sure you added <span className="font-mono text-amber-300 bg-black/40 px-1 py-0.5 rounded">ludo-arena-theta.vercel.app</span> AND <span className="font-mono text-amber-300 bg-black/40 px-1 py-0.5 rounded">vercel.app</span> (no <span className="text-rose-300">https://</span> or slashes).
+                          </li>
+                          <li>
+                            Confirm it is in Firebase Project ID <span className="font-mono text-amber-300 bg-black/40 px-1 py-0.5 rounded">gen-lang-client-0663840253</span>.
+                          </li>
+                          <li>
+                            Google's auth propagation takes 3–5 minutes after saving.
+                          </li>
+                        </ol>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Prominent Google Sign-in Button */}
+                {/* Primary Google Sign-in Button */}
                 <button
                   id="google-sign-in-button"
                   type="button"
@@ -292,7 +340,18 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                       d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.25 2.63 1.26 6.61l4.01 3.15c.95-2.85 3.6-4.96 6.73-4.96z"
                     />
                   </svg>
-                  <span>{isSubmitting ? 'Signing in with Google...' : 'Sign in with Google'}</span>
+                  <span>{isSubmitting ? 'Connecting Google...' : 'Sign in with Google'}</span>
+                </button>
+
+                {/* Secondary Redirect Mode Button for Mobile */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignInRedirectClick}
+                  disabled={isSubmitting}
+                  className="w-full py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-700 transition"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Mobile Redirect Sign In (Alternative)</span>
                 </button>
 
                 <p className="text-[11px] text-center text-slate-500">
