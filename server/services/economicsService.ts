@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { ALLOWED_STAKES, GAME_ECONOMICS } from '../../src/types/platform.js';
+import { ALLOWED_STAKES, GAME_ECONOMICS, getServiceFee } from '../../src/types/platform.js';
 
 export interface PesaJetConfig {
   apiKey: string;
@@ -252,8 +252,9 @@ export function validateStakeAmount(amount: number): boolean {
  * Server-authoritative Fee and Prize calculator
  */
 export function calculateMatchPrizeAndFee(stake: number, playerCount: number) {
-  const totalPot = stake * playerCount;
-  const platformFee = Math.round((totalPot * GAME_ECONOMICS.platformFeePercentage) / 100);
+  const count = playerCount >= 4 ? 4 : playerCount === 3 ? 3 : 2;
+  const totalPot = stake * count;
+  const platformFee = getServiceFee(stake, count);
   const prizeAmount = totalPot - platformFee;
   return {
     totalPot,

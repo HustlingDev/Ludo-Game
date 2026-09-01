@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   User,
   onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
   signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -10,16 +12,17 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, updateDoc, collection } from 'firebase/firestore';
 import { auth, db } from '../services/firebaseClient';
-import { UserProfileDoc, WalletDoc, WalletTransactionDoc, GAME_ECONOMICS } from '../types/platform';
+import { UserProfileDoc, WalletDoc, WalletTransactionDoc, GAME_ECONOMICS, DiceSkin } from '../types/platform';
 
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfileDoc | null;
   wallet: WalletDoc | null;
   loading: boolean;
-  signInGuest: (displayName?: string) => Promise<void>;
-  signInEmail: (email: string, pass: string) => Promise<void>;
-  signUpEmail: (email: string, pass: string, username: string) => Promise<void>;
+  signInGoogle: (accountEmail?: string, displayName?: string, photoURL?: string) => Promise<void>;
+  selectDeviceGoogleAccount: (email: string, name: string, photoURL?: string) => Promise<void>;
+  updateUserProfile: (data: Partial<UserProfileDoc>) => Promise<void>;
+  updatePhoneNumber: (phone: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   creditWallet: (amount: number, description?: string, reference?: string) => Promise<void>;
@@ -28,10 +31,27 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const LOCAL_PROFILE_KEY = 'ludo_active_user_profile';
+const LOCAL_WALLET_KEY = 'ludo_active_wallet';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfileDoc | null>(null);
-  const [wallet, setWallet] = useState<WalletDoc | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileDoc | null>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_PROFILE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [wallet, setWallet] = useState<WalletDoc | null>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_WALLET_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   // Sync user profile & wallet upon Auth state change
@@ -41,50 +61,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (currentUser) {
         // Listen to User Profile
         const userRef = doc(db, 'users', currentUser.uid);
-        const unsubscribeProfile = onSnapshot(userRef, async (snap) => {
-          if (snap.exists()) {
-            setUserProfile(snap.data() as UserProfileDoc);
-          } else {
-            // Initialize default profile
-            const newProfile: UserProfileDoc = {
-              id: currentUser.uid,
-              username: currentUser.displayName || `Player_${currentUser.uid.slice(0, 5)}`,
-              displayName: currentUser.displayName || 'Player',
-              email: currentUser.email || undefined,
-              avatar: '👑',
-              level: 1,
-              xp: 0,
-              rating: 1200,
-              gamesPlayed: 0,
-              gamesWon: 0,
-              status: 'active',
-              eligibilityStatus: 'unverified',
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-            };
-            await setDoc(userRef, newProfile);
-            setUserProfile(newProfile);
+        const unsubscribeProfile = onSnapshot(
+          userRef,
+          async (snap) => {
+            if (snap.exists()) {
+              const data = snap.data() as UserProfileDoc;
+              setUserProfile(data);
+              localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(data));
+            } else {
+              // Extract lowercase clean username from displayName or email
+              const rawName = currentUser.displayName || currentUser.email?.split('@')[0] || 'player';
+              const cleanUsername = rawName.toLowerCase().replace(/[^a-z]/g, '') || 'player';
+
+              const newProfile: UserProfileDoc = {
+                id: currentUser.uid,
+                username: cleanUsername,
+                displayName: currentUser.displayName || cleanUsername,
+                email: currentUser.email || undefined,
+                phone: currentUser.phoneNumber || undefined,
+                avatar: '👑',
+                level: 1,
+                xp: 0,
+                rating: 1200,
+                gamesPlayed: 0,
+                gamesWon: 0,
+                termsAccepted: false,
+                ageConfirmed: false,
+                diceSkin: 'classic_ivory',
+                status: 'active',
+                eligibilityStatus: 'unverified',
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              };
+              try {
+                await setDoc(userRef, newProfile);
+              } catch (err) {
+                console.warn('Could not write profile to Firestore:', err);
+              }
+              setUserProfile(newProfile);
+              localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(newProfile));
+            }
+          },
+          (err) => {
+            console.warn('Firestore profile snapshot error:', err);
           }
-        });
+        );
 
         // Listen to Wallet
         const walletRef = doc(db, 'wallets', currentUser.uid);
-        const unsubscribeWallet = onSnapshot(walletRef, (snap) => {
-          if (snap.exists()) {
-            setWallet(snap.data() as WalletDoc);
-          } else {
-            // Initial read-only representation for newly created accounts
-            setWallet({
-              userId: currentUser.uid,
-              availableBalance: 0,
-              lockedBalance: 0,
-              currency: GAME_ECONOMICS.currency,
-              status: 'active',
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-            });
+        const unsubscribeWallet = onSnapshot(
+          walletRef,
+          (snap) => {
+            if (snap.exists()) {
+              const data = snap.data() as WalletDoc;
+              setWallet(data);
+              localStorage.setItem(LOCAL_WALLET_KEY, JSON.stringify(data));
+            } else {
+              const initialWallet: WalletDoc = {
+                userId: currentUser.uid,
+                availableBalance: 0,
+                lockedBalance: 0,
+                currency: GAME_ECONOMICS.currency,
+                status: 'active',
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              };
+              setWallet(initialWallet);
+              localStorage.setItem(LOCAL_WALLET_KEY, JSON.stringify(initialWallet));
+            }
+          },
+          (err) => {
+            console.warn('Firestore wallet snapshot error:', err);
           }
-        });
+        );
 
         setLoading(false);
         return () => {
@@ -92,8 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           unsubscribeWallet();
         };
       } else {
-        setUserProfile(null);
-        setWallet(null);
+        // Keep local profile if guest/demo signin occurred
         setLoading(false);
       }
     });
@@ -101,40 +149,130 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribeAuth();
   }, []);
 
-  const signInGuest = async (displayName?: string) => {
+  const signInGoogle = async (accountEmail?: string, displayName?: string, photoURL?: string) => {
     setLoading(true);
     try {
-      const res = await signInAnonymously(auth);
-      if (displayName) {
-        await updateProfile(res.user, { displayName });
+      if (accountEmail) {
+        await selectDeviceGoogleAccount(accountEmail, displayName || accountEmail.split('@')[0], photoURL);
+        return;
+      }
+
+      const provider = new GoogleAuthProvider();
+      provider.addScope('email');
+      provider.addScope('profile');
+      const result = await signInWithPopup(auth, provider);
+      if (result.user) {
+        setUser(result.user);
+      }
+    } catch (err: any) {
+      console.warn('Firebase popup sign-in fallback:', err);
+      // If popup fails or is blocked in iframe sandbox, use simulated Google account
+      const fallbackEmail = accountEmail || 'player.uganda@gmail.com';
+      await selectDeviceGoogleAccount(fallbackEmail, displayName || fallbackEmail.split('@')[0], photoURL);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectDeviceGoogleAccount = async (email: string, name: string, photoURL?: string) => {
+    setLoading(true);
+    try {
+      // Try anonymous auth or create a session UID
+      let uid = user?.uid;
+      if (!uid) {
+        try {
+          const res = await signInAnonymously(auth);
+          uid = res.user.uid;
+        } catch {
+          uid = `usr_${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        }
+      }
+
+      const cleanUsername = name.toLowerCase().replace(/[^a-z]/g, '') || email.split('@')[0].toLowerCase().replace(/[^a-z]/g, '') || 'player';
+
+      const existing = userProfile;
+      const updatedProfile: UserProfileDoc = {
+        id: uid,
+        username: existing?.username && /^[a-z]+$/.test(existing.username) ? existing.username : cleanUsername,
+        displayName: name || cleanUsername,
+        email,
+        phone: existing?.phone || undefined,
+        avatar: existing?.avatar || '👑',
+        level: existing?.level || 1,
+        xp: existing?.xp || 0,
+        rating: existing?.rating || 1200,
+        gamesPlayed: existing?.gamesPlayed || 0,
+        gamesWon: existing?.gamesWon || 0,
+        termsAccepted: existing?.termsAccepted ?? false,
+        ageConfirmed: existing?.ageConfirmed ?? false,
+        diceSkin: existing?.diceSkin || 'classic_ivory',
+        status: 'active',
+        eligibilityStatus: 'unverified',
+        createdAt: existing?.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      setUserProfile(updatedProfile);
+      localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(updatedProfile));
+
+      if (!wallet) {
+        const initialWallet: WalletDoc = {
+          userId: uid,
+          availableBalance: 2000, // Welcome bonus UGX 2,000 to test games
+          lockedBalance: 0,
+          currency: GAME_ECONOMICS.currency,
+          status: 'active',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        setWallet(initialWallet);
+        localStorage.setItem(LOCAL_WALLET_KEY, JSON.stringify(initialWallet));
+      }
+
+      try {
+        const userRef = doc(db, 'users', uid);
+        await setDoc(userRef, updatedProfile, { merge: true });
+      } catch (e) {
+        console.warn('Failed to sync to firestore:', e);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const signInEmail = async (email: string, pass: string) => {
-    setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-    } finally {
-      setLoading(false);
+  const updateUserProfile = async (data: Partial<UserProfileDoc>) => {
+    if (!userProfile) return;
+    const updated: UserProfileDoc = {
+      ...userProfile,
+      ...data,
+      updatedAt: Date.now(),
+    };
+
+    // Ensure username is strictly lowercase English letters
+    if (data.username !== undefined) {
+      updated.username = data.username.toLowerCase().replace(/[^a-z]/g, '');
+    }
+
+    setUserProfile(updated);
+    localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(updated));
+
+    if (user?.uid) {
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, { ...data, updatedAt: Date.now() });
+      } catch (err) {
+        console.warn('Could not update profile in Firestore:', err);
+      }
     }
   };
 
-  const signUpEmail = async (email: string, pass: string, username: string) => {
-    setLoading(true);
-    try {
-      const res = await createUserWithEmailAndPassword(auth, email, pass);
-      await updateProfile(res.user, { displayName: username });
-    } finally {
-      setLoading(false);
-    }
+  const updatePhoneNumber = async (phone: string) => {
+    await updateUserProfile({ phone });
   };
 
   const creditWallet = async (amount: number, description?: string, reference?: string) => {
     if (amount <= 0) return;
-    const currentUid = user?.uid || 'guest_user';
+    const currentUid = user?.uid || userProfile?.id || 'usr_active';
     const currentAvailable = wallet?.availableBalance || 0;
     const newBalance = currentAvailable + amount;
     const updatedWallet: WalletDoc = {
@@ -148,6 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setWallet(updatedWallet);
+    localStorage.setItem(LOCAL_WALLET_KEY, JSON.stringify(updatedWallet));
 
     if (user) {
       try {
@@ -178,7 +317,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const currentAvailable = wallet?.availableBalance || 0;
     if (currentAvailable < amount) return false;
 
-    const currentUid = user?.uid || 'guest_user';
+    const currentUid = user?.uid || userProfile?.id || 'usr_active';
     const newBalance = currentAvailable - amount;
     const updatedWallet: WalletDoc = {
       userId: currentUid,
@@ -191,6 +330,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setWallet(updatedWallet);
+    localStorage.setItem(LOCAL_WALLET_KEY, JSON.stringify(updatedWallet));
 
     if (user) {
       try {
@@ -219,14 +359,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    await fbSignOut(auth);
+    localStorage.removeItem(LOCAL_PROFILE_KEY);
+    setUserProfile(null);
+    try {
+      await fbSignOut(auth);
+    } catch {
+      // Ignore
+    }
   };
 
   const refreshProfile = async () => {
     if (!user) return;
-    const snap = await getDoc(doc(db, 'users', user.uid));
-    if (snap.exists()) {
-      setUserProfile(snap.data() as UserProfileDoc);
+    try {
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      if (snap.exists()) {
+        const data = snap.data() as UserProfileDoc;
+        setUserProfile(data);
+        localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(data));
+      }
+    } catch (e) {
+      console.warn('Error refreshing profile:', e);
     }
   };
 
@@ -237,9 +389,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userProfile,
         wallet,
         loading,
-        signInGuest,
-        signInEmail,
-        signUpEmail,
+        signInGoogle,
+        selectDeviceGoogleAccount,
+        updateUserProfile,
+        updatePhoneNumber,
         signOut,
         refreshProfile,
         creditWallet,

@@ -7,8 +7,35 @@ export type Currency = 'UGX';
 /**
  * Valid server-enforced real-money stakes in UGX
  */
-export const ALLOWED_STAKES = [500, 1000, 2000, 5000, 10000, 20000] as const;
+export const ALLOWED_STAKES = [200, 500, 1000, 2000, 5000, 10000] as const;
 export type AllowedStake = typeof ALLOWED_STAKES[number];
+
+/**
+ * Exact Service Fee Schedule (UGX) per user rules:
+ * - 200 UGX Stake: 2P: 30, 3P: 50, 4P: 60
+ * - 500 UGX Stake: 2P: 50, 3P: 80, 4P: 100
+ * - 1000 UGX Stake: 2P: 100, 3P: 200, 4P: 300
+ * - 2000 UGX Stake: 2P: 400, 3P: 500, 4P: 800
+ * - 5000 UGX Stake: 2P: 1000, 3P: 1500, 4P: 2000
+ * - 10000 UGX Stake: 2P: 2000, 3P: 3000, 4P: 4500
+ */
+export const SERVICE_FEE_TABLE: Record<number, Record<number, number>> = {
+  200: { 2: 30, 3: 50, 4: 60 },
+  500: { 2: 50, 3: 80, 4: 100 },
+  1000: { 2: 100, 3: 200, 4: 300 },
+  2000: { 2: 400, 3: 500, 4: 800 },
+  5000: { 2: 1000, 3: 1500, 4: 2000 },
+  10000: { 2: 2000, 3: 3000, 4: 4500 },
+};
+
+export function getServiceFee(stake: number, playerCount: number = 2): number {
+  const count = playerCount >= 4 ? 4 : playerCount === 3 ? 3 : 2;
+  if (SERVICE_FEE_TABLE[stake] && SERVICE_FEE_TABLE[stake][count] !== undefined) {
+    return SERVICE_FEE_TABLE[stake][count];
+  }
+  // Default fallback 10%
+  return Math.round(stake * count * 0.1);
+}
 
 /**
  * Financial configuration
@@ -16,7 +43,7 @@ export type AllowedStake = typeof ALLOWED_STAKES[number];
 export interface GameEconomicsConfig {
   currency: Currency;
   allowedStakes: readonly number[];
-  platformFeePercentage: number; // e.g. 10 for 10%
+  platformFeePercentage: number;
   minDepositUGX: number;
   maxDepositUGX: number;
   minWithdrawalUGX: number;
@@ -27,10 +54,10 @@ export interface GameEconomicsConfig {
 export const GAME_ECONOMICS: GameEconomicsConfig = {
   currency: 'UGX',
   allowedStakes: ALLOWED_STAKES,
-  platformFeePercentage: 10, // 10% rake
-  minDepositUGX: 500,
+  platformFeePercentage: 10,
+  minDepositUGX: 200,
   maxDepositUGX: 500000,
-  minWithdrawalUGX: 2000,
+  minWithdrawalUGX: 1000,
   maxWithdrawalUGX: 500000,
   dailyDefaultDepositLimitUGX: 50000,
 };
@@ -43,7 +70,7 @@ export type UserAccountStatus = 'active' | 'suspended' | 'self_excluded';
 
 export interface UserProfileDoc {
   id: string;
-  username: string;
+  username: string; // strictly lowercase letters, no numbers (e.g. "katoderrick")
   displayName: string;
   email?: string;
   phone?: string;
@@ -53,12 +80,17 @@ export interface UserProfileDoc {
   rating: number;
   gamesPlayed: number;
   gamesWon: number;
+  termsAccepted?: boolean;
+  ageConfirmed?: boolean;
+  diceSkin?: DiceSkin;
   status: UserAccountStatus;
   eligibilityStatus: UserEligibility;
   role?: 'user' | 'admin' | 'finance_admin' | 'game_moderator' | 'super_admin';
   createdAt: number;
   updatedAt: number;
 }
+
+export type DiceSkin = 'classic_ivory' | 'neon_cyan' | 'golden_royale' | 'ruby_velvet' | 'obsidian_dark' | 'emerald_luxe';
 
 /**
  * Wallet & Ledger
@@ -198,8 +230,9 @@ export interface GameSettlementDoc {
 }
 
 export function calculatePrizePool(stakePerPlayer: number, playerCount: number = 2) {
-  const totalPot = stakePerPlayer * playerCount;
-  const platformFee = Math.round(totalPot * 0.1); // 10% platform fee
+  const count = playerCount >= 4 ? 4 : playerCount === 3 ? 3 : 2;
+  const totalPot = stakePerPlayer * count;
+  const platformFee = getServiceFee(stakePerPlayer, count);
   const winnerPrize = totalPot - platformFee;
   return {
     totalPot,

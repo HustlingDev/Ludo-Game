@@ -18,6 +18,7 @@ import {
   MatchHistoryItem,
   LeaderboardEntry,
 } from '../types';
+import { DiceSkin, calculatePrizePool, getServiceFee } from '../types/platform';
 import {
   createInitialGameState,
   createInitialPlayer,
@@ -39,6 +40,7 @@ const STORAGE_KEY_HISTORY = 'ludo_user_history';
 const STORAGE_KEY_FRIENDS = 'ludo_user_friends';
 const STORAGE_KEY_REQUESTS = 'ludo_user_requests';
 const STORAGE_KEY_NOTIFS = 'ludo_user_notifications';
+const STORAGE_KEY_DICE_SKIN = 'ludo_user_dice_skin';
 
 export interface UserProfile {
   name: string;
@@ -48,7 +50,7 @@ export interface UserProfile {
 }
 
 const DEFAULT_PROFILE: UserProfile = {
-  name: `Player_${Math.floor(1000 + Math.random() * 9000)}`,
+  name: 'player',
   avatar: '👑',
   preferredColor: 'red',
   rating: 1200,
@@ -100,9 +102,7 @@ const DEFAULT_STATS: PlayerStats = {
 };
 
 const DEFAULT_FRIENDS: Friend[] = [];
-
 const DEFAULT_HISTORY: MatchHistoryItem[] = [];
-
 const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [];
 
 export function useLudoGame() {
@@ -169,14 +169,32 @@ export function useLudoGame() {
     }
   });
 
+  const [selectedDiceSkin, setSelectedDiceSkin] = useState<DiceSkin>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_DICE_SKIN);
+      return (saved as DiceSkin) || 'classic_ivory';
+    } catch {
+      return 'classic_ivory';
+    }
+  });
+
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(DEFAULT_LEADERBOARD);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  // Modal open states
   const [activeModal, setActiveModal] = useState<
-    'lobby' | 'rules' | 'settings' | 'friends' | 'stats' | 'history' | 'leaderboard' | 'notifications' | 'wallet' | 'auth' | null
+    | 'lobby'
+    | 'settings'
+    | 'friends'
+    | 'stats'
+    | 'history'
+    | 'leaderboard'
+    | 'notifications'
+    | 'rules'
+    | 'wallet'
+    | 'auth'
+    | 'admin'
+    | null
   >(null);
-
 
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -184,38 +202,26 @@ export function useLudoGame() {
   const [draggedTokenId, setDraggedTokenId] = useState<number | null>(null);
   const [hoveredTokenId, setHoveredTokenId] = useState<number | null>(null);
   const [isRollingAnimation, setIsRollingAnimation] = useState(false);
-  const [myPlayerId, setMyPlayerId] = useState<string>('local_player_1');
+  const [myPlayerId, setMyPlayerId] = useState<string>('local_host');
 
-  // Core game state
+  // Consecutive misses tracker for the 2-strike 15s/20s kick rule
+  const playerMissesRef = useRef<Record<string, number>>({});
+
+  // Active Game State (Default 15s turn limit)
   const [gameState, setGameState] = useState<GameState>(() => {
-    const p1 = createInitialPlayer('p1', profile.name, profile.avatar, profile.preferredColor, 'human', 'medium', true);
-    const p2 = createInitialPlayer('p2', 'Player 2', '⚡', 'green', 'human', 'medium', false);
-    const p3 = createInitialPlayer('p3', 'Player 3', '🦁', 'yellow', 'human', 'medium', false);
-    const p4 = createInitialPlayer('p4', 'Player 4', '🐉', 'blue', 'human', 'medium', false);
-    return createInitialGameState('LIVE', 'local_pass_play', [p1, p2, p3, p4], 30, 'lobby');
+    const p1 = createInitialPlayer('p_red', profile.name, profile.avatar, 'red', 'human', undefined, true);
+    const p2 = createInitialPlayer('p_yellow', 'mukasa', '🦁', 'yellow', 'bot', 'medium');
+    const init = createInitialGameState('LOCAL', 'local_pass_play', [p1, p2], 15);
+    init.status = 'lobby';
+    return init;
   });
 
-  // WebSocket ref
   const wsRef = useRef<WebSocket | null>(null);
   const botTimerRef = useRef<NodeJS.Timeout | null>(null);
   const localTurnTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isMatchRecordedRef = useRef(false);
 
-  // Toast Helpers
-  const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
-    const id = `toast_${Date.now()}_${Math.random()}`;
-    const newToast: ToastMessage = { ...toast, id };
-    setToasts((prev) => [...prev, newToast]);
-
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4500);
-  }, []);
-
-  const dismissToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  // Save states to local storage
+  // Sync profile & storage
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(profile));
@@ -224,159 +230,55 @@ export function useLudoGame() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+      localStorage.setItem(STORAGE_KEY_DICE_SKIN, selectedDiceSkin);
     } catch {}
-  }, [settings]);
+  }, [selectedDiceSkin]);
 
+  // Online / Offline connectivity listener
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
-    } catch {}
-  }, [stats]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
-    } catch {}
-  }, [history]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_FRIENDS, JSON.stringify(friends));
-    } catch {}
-  }, [friends]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(pendingRequests));
-    } catch {}
-  }, [pendingRequests]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_NOTIFS, JSON.stringify(notifications));
-    } catch {}
-  }, [notifications]);
-
-  // Sync Audio Settings
-  useEffect(() => {
-    sounds.setMuteAll(settings.audio.muteAll);
-    sounds.setSfxMuted(!settings.audio.sfxEnabled);
-    sounds.setBgmMuted(!settings.audio.bgmEnabled);
-    sounds.setSfxVolume(settings.audio.sfxVolume);
-    sounds.setBgmVolume(settings.audio.bgmVolume);
-  }, [settings.audio]);
-
-  // Handle Confetti and Game Completion Record
-  const isMatchRecordedRef = useRef(false);
-
-  useEffect(() => {
-    if (gameState.status === 'finished' || (gameState.winnerOrder && gameState.winnerOrder.length > 0)) {
-      sounds.playVictory();
-      confetti({
-        particleCount: 120,
-        spread: 80,
-        origin: { y: 0.6 },
+    const handleOnline = () => {
+      setIsOnline(true);
+      addToast({
+        type: 'success',
+        title: 'Connection Restored',
+        message: 'You are back online and connected to Ludo Arena!',
       });
+    };
 
-      if (!isMatchRecordedRef.current) {
-        isMatchRecordedRef.current = true;
+    const handleOffline = () => {
+      setIsOnline(false);
+      addToast({
+        type: 'error',
+        title: 'No Internet Connection',
+        message: 'Connection lost. Please check your mobile data or Wi-Fi.',
+      });
+    };
 
-        const winnerColor = gameState.winnerOrder[0];
-        const isUserWinner = winnerColor === profile.preferredColor;
-        const opponentRatings = gameState.players
-          .filter((p) => p.color !== profile.preferredColor)
-          .map((p) => p.rating || 1200);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
-        const eloDelta = calculateEloChange(
-          profile.rating,
-          opponentRatings,
-          isUserWinner ? 1 : 2,
-          gameState.players.length,
-          true
-        );
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
-        const xpEarned = calculateXpGain(isUserWinner ? 1 : 2, 2, gameState.mode);
+  const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
+    const id = `toast_${Date.now()}_${Math.random()}`;
+    setToasts((prev) => [...prev, { ...toast, id }]);
+  }, []);
 
-        // Update profile
-        const newRating = Math.max(800, profile.rating + eloDelta);
-        setProfile((prev) => ({
-          ...prev,
-          rating: newRating,
-        }));
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
-        // Update stats
-        setStats((prev) => {
-          const totalGames = prev.totalGames + 1;
-          const wins = prev.wins + (isUserWinner ? 1 : 0);
-          const losses = prev.losses + (isUserWinner ? 0 : 1);
-          const winRate = Math.round((wins / totalGames) * 100);
-          const currentXp = prev.currentXp + xpEarned;
-          const nextLevelXp = prev.nextLevelXp;
-          let level = prev.currentLevel;
-          let remXp = currentXp;
-
-          if (remXp >= nextLevelXp) {
-            level += 1;
-            remXp -= nextLevelXp;
-            addToast({
-              type: 'success',
-              title: 'Level Up!',
-              message: `Congratulations! You reached Level ${level}!`,
-            });
-          }
-
-          return {
-            ...prev,
-            totalGames,
-            wins,
-            losses,
-            winRate,
-            currentRating: newRating,
-            highestRating: Math.max(prev.highestRating, newRating),
-            currentLevel: level,
-            currentXp: remXp,
-            recentForm: [isUserWinner ? 'W' : 'L', ...prev.recentForm.slice(0, 4)],
-          };
-        });
-
-        // Add to history
-        const newHistoryItem: MatchHistoryItem = {
-          id: `match_${Date.now()}`,
-          date: 'Just now',
-          timestamp: Date.now(),
-          players: gameState.players.map((p) => ({
-            name: p.name,
-            avatar: p.avatar,
-            color: p.color,
-            rating: p.rating || 1200,
-            isUser: p.color === profile.preferredColor,
-            isWinner: p.color === winnerColor,
-            rank: p.color === winnerColor ? 1 : 2,
-          })),
-          winnerColor,
-          winnerName: gameState.players.find((p) => p.color === winnerColor)?.name || 'Winner',
-          gameMode: gameState.mode,
-          durationSeconds: Math.floor((Date.now() - (gameState.startedAt || Date.now())) / 1000),
-          ratingChange: eloDelta,
-          result: isUserWinner ? 'VICTORY' : 'DEFEAT',
-          capturesMade: 2,
-        };
-
-        setHistory((prev) => [newHistoryItem, ...prev]);
-
-        addToast({
-          type: isUserWinner ? 'success' : 'info',
-          title: isUserWinner ? 'Match Victory!' : 'Match Finished',
-          message: `${eloDelta >= 0 ? '+' : ''}${eloDelta} ELO | +${xpEarned} XP`,
-        });
-      }
-    } else {
-      isMatchRecordedRef.current = false;
+  const sendWSAction = useCallback((action: WSClientAction) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(action));
     }
-  }, [gameState.status, gameState.winnerOrder, profile.preferredColor, profile.rating, gameState.mode, addToast]);
+  }, []);
 
-  // Connect WebSocket helper with friendly reconnection and error feedback
+  // Connect WebSocket helper
   const connectWebSocket = useCallback(
     (onOpen?: (ws: WebSocket) => void) => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -401,7 +303,7 @@ export function useLudoGame() {
           addToast({
             type: 'error',
             title: 'Message Error',
-            message: 'Something went wrong while synchronizing game state.',
+            message: 'Multiplayer synchronization error.',
           });
         }
       };
@@ -410,14 +312,10 @@ export function useLudoGame() {
         addToast({
           type: 'error',
           title: 'Connection Issue',
-          message: 'Connection lost. Reconnecting to multiplayer server...',
+          message: 'Connection lost. Reconnecting...',
           actionText: 'Retry Now',
           onAction: () => connectWebSocket(onOpen),
         });
-      };
-
-      socket.onclose = () => {
-        console.log('WebSocket closed');
       };
     },
     [addToast]
@@ -451,7 +349,7 @@ export function useLudoGame() {
           setTimeout(() => {
             setIsRollingAnimation(false);
             sounds.playDiceResult(action.payload.diceValue);
-          }, 400);
+          }, 450);
           break;
 
         case 'TOKEN_MOVED':
@@ -476,16 +374,16 @@ export function useLudoGame() {
         case 'PLAYER_DISCONNECTED':
           addToast({
             type: 'warning',
-            title: 'Player Disconnected',
-            message: `${action.payload.name} has left the room.`,
+            title: 'Player Left',
+            message: `${action.payload.name} disconnected from the match.`,
           });
           break;
 
         case 'ERROR':
           addToast({
             type: 'error',
-            title: 'Notice',
-            message: action.payload.message || 'Something went wrong. Please try again.',
+            title: 'Game Error',
+            message: action.payload.message,
           });
           break;
       }
@@ -493,50 +391,28 @@ export function useLudoGame() {
     [addToast]
   );
 
-  const sendWSAction = useCallback((action: WSClientAction) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(action));
-    }
-  }, []);
-
-  // Offline local bot runner
+  // Bot Turn Automation
   useEffect(() => {
-    if (gameState.mode === 'online_multiplayer') return;
-    if (gameState.status !== 'playing') return;
+    if (gameState.status !== 'playing' || gameState.mode === 'online_multiplayer') return;
 
-    const activeColor = gameState.activeColors[gameState.activeColorIndex];
-    const activePlayer = gameState.players.find((p) => p.color === activeColor);
+    const curColor = gameState.activeColors[gameState.activeColorIndex];
+    const curPlayer = gameState.players.find((p) => p.color === curColor);
 
-    if (!activePlayer || activePlayer.type !== 'bot' || activePlayer.hasWon) {
-      return;
-    }
+    if (!curPlayer || curPlayer.type !== 'bot') return;
 
-    if (botTimerRef.current) {
-      clearTimeout(botTimerRef.current);
-      botTimerRef.current = null;
-    }
-
-    // Step 1: Bot needs to roll dice
-    if (!gameState.hasRolled && gameState.canRoll) {
+    // Step 1: Bot needs to roll
+    if (gameState.canRoll && !gameState.hasRolled) {
       botTimerRef.current = setTimeout(() => {
         sounds.playDiceRoll();
         setIsRollingAnimation(true);
-
         const rollVal = Math.floor(Math.random() * 6) + 1;
 
         setTimeout(() => {
           setIsRollingAnimation(false);
           sounds.playDiceResult(rollVal);
 
-          setGameState((prev) => {
-            if (prev.status !== 'playing') return prev;
-            const curColor = prev.activeColors[prev.activeColorIndex];
-            const curPlayer = prev.players.find((p) => p.color === curColor);
-            if (!curPlayer || curPlayer.type !== 'bot') return prev;
-
-            const { newState } = applyDiceRoll(prev, rollVal);
-            return newState;
-          });
+          const { newState } = applyDiceRoll(gameState, rollVal);
+          setGameState(newState);
         }, 350);
       }, 650);
 
@@ -550,13 +426,13 @@ export function useLudoGame() {
       botTimerRef.current = setTimeout(() => {
         setGameState((prev) => {
           if (prev.status !== 'playing') return prev;
-          const curColor = prev.activeColors[prev.activeColorIndex];
-          const curPlayer = prev.players.find((p) => p.color === curColor);
-          if (!curPlayer || curPlayer.type !== 'bot') return prev;
+          const activeC = prev.activeColors[prev.activeColorIndex];
+          const activeP = prev.players.find((p) => p.color === activeC);
+          if (!activeP || activeP.type !== 'bot') return prev;
 
           if (!prev.mustSelectToken || prev.validTokenMoves.length === 0) return prev;
 
-          const bestTokenId = selectBestBotMove(prev, curPlayer, prev.validTokenMoves);
+          const bestTokenId = selectBestBotMove(prev, activeP, prev.validTokenMoves);
           const moveResult = applyTokenMove(prev, bestTokenId);
 
           if (moveResult.capturedColor) {
@@ -585,31 +461,96 @@ export function useLudoGame() {
     gameState.mode,
   ]);
 
-  // Turn timer countdown
+  // Turn timer countdown with 15s (1st miss) / 20s (2nd miss kick) logic
   useEffect(() => {
-    if (gameState.status !== 'playing' || gameState.turnTimeLimit <= 0) return;
+    if (gameState.status !== 'playing') return;
 
     localTurnTimerRef.current = setInterval(() => {
       setGameState((prev) => {
+        if (prev.status !== 'playing') return prev;
+
+        const curColor = prev.activeColors[prev.activeColorIndex];
+        const curPlayer = prev.players.find((p) => p.color === curColor);
+        const curMisses = playerMissesRef.current[curColor] || 0;
+
+        // When time expires
         if (prev.turnTimeRemaining <= 1) {
-          // Timeout: pass turn
           sounds.playButton();
-          const nextIdx = (prev.activeColorIndex + 1) % prev.activeColors.length;
-          return {
-            ...prev,
-            hasRolled: false,
-            canRoll: true,
-            validTokenMoves: [],
-            mustSelectToken: false,
-            consecutiveSixes: 0,
-            activeColorIndex: nextIdx,
-            turnTimeRemaining: prev.turnTimeLimit,
-            lastMoveDescription: 'Turn timed out! Passed to next player.',
-          };
+          const newMisses = curMisses + 1;
+          playerMissesRef.current[curColor] = newMisses;
+
+          // Second Consecutive Miss -> Kick Player!
+          if (newMisses >= 2) {
+            addToast({
+              type: 'error',
+              title: 'Player Kicked!',
+              message: `⚠️ ${curPlayer?.name || 'Player'} was kicked for missing 2 consecutive turns! Stake forfeited and distributed to remaining players.`,
+            });
+
+            // Remove or eliminate kicked player from active match
+            const remainingColors = prev.activeColors.filter((c) => c !== curColor);
+            if (remainingColors.length <= 1) {
+              // Remaining player wins automatically!
+              const winnerC = remainingColors[0] || 'red';
+              sounds.playVictory();
+              return {
+                ...prev,
+                status: 'finished',
+                winnerOrder: [winnerC],
+                lastMoveDescription: `${curPlayer?.name || 'Player'} forfeited! Match concluded.`,
+              };
+            }
+
+            const nextIndex = prev.activeColorIndex % remainingColors.length;
+            const nextColor = remainingColors[nextIndex];
+            const nextMisses = playerMissesRef.current[nextColor] || 0;
+            const nextTurnLimit = nextMisses === 1 ? 20 : 15;
+
+            return {
+              ...prev,
+              activeColors: remainingColors,
+              activeColorIndex: nextIndex,
+              hasRolled: false,
+              canRoll: true,
+              validTokenMoves: [],
+              mustSelectToken: false,
+              consecutiveSixes: 0,
+              turnTimeLimit: nextTurnLimit,
+              turnTimeRemaining: nextTurnLimit,
+              lastMoveDescription: `${curPlayer?.name} was kicked for inactivity.`,
+            };
+          } else {
+            // First Miss (Strike 1) -> Pass turn with warning
+            addToast({
+              type: 'warning',
+              title: 'Turn Missed (Strike 1)',
+              message: `⚠️ ${curPlayer?.name || 'Player'} timed out (15s limit). Final warning: 20s timer on next turn before forfeiture!`,
+            });
+
+            const nextIdx = (prev.activeColorIndex + 1) % prev.activeColors.length;
+            const nextColor = prev.activeColors[nextIdx];
+            const nextMisses = playerMissesRef.current[nextColor] || 0;
+            const nextTurnLimit = nextMisses === 1 ? 20 : 15;
+
+            return {
+              ...prev,
+              hasRolled: false,
+              canRoll: true,
+              validTokenMoves: [],
+              mustSelectToken: false,
+              consecutiveSixes: 0,
+              activeColorIndex: nextIdx,
+              turnTimeLimit: nextTurnLimit,
+              turnTimeRemaining: nextTurnLimit,
+              lastMoveDescription: `${curPlayer?.name} timed out. Turn passed.`,
+            };
+          }
         }
+
         if (prev.turnTimeRemaining <= 4) {
           sounds.playCountdownTick();
         }
+
         return {
           ...prev,
           turnTimeRemaining: prev.turnTimeRemaining - 1,
@@ -620,11 +561,15 @@ export function useLudoGame() {
     return () => {
       if (localTurnTimerRef.current) clearInterval(localTurnTimerRef.current);
     };
-  }, [gameState.status, gameState.turnTimeLimit, gameState.activeColorIndex]);
+  }, [gameState.status, gameState.activeColorIndex, addToast]);
 
-  // User Actions: Dice Roll
+  // Dice Roll
   const handleRollDice = () => {
     if (!gameState.canRoll || gameState.status !== 'playing') return;
+
+    // Reset current player's misses on successful active play
+    const curColor = gameState.activeColors[gameState.activeColorIndex];
+    playerMissesRef.current[curColor] = 0;
 
     if (gameState.mode === 'online_multiplayer') {
       sendWSAction({ type: 'ROLL_DICE', payload: { roomId: gameState.roomId } });
@@ -640,7 +585,6 @@ export function useLudoGame() {
         const { newState, hasValidMoves } = applyDiceRoll(gameState, rollVal);
         setGameState(newState);
 
-        // Auto move single choice if enabled in settings
         if (
           hasValidMoves &&
           settings.gameplay.autoMoveSingleChoice &&
@@ -654,14 +598,14 @@ export function useLudoGame() {
     }
   };
 
-  // User Actions: Token Move
+  // Token Move
   const handleMoveToken = (tokenId: number, customState?: GameState) => {
     const stateToUse = customState || gameState;
     if (!stateToUse.mustSelectToken) {
       addToast({
         type: 'warning',
         title: 'Invalid Move',
-        message: 'You cannot make that move right now. Please roll first.',
+        message: 'Please roll the dice first.',
       });
       return;
     }
@@ -670,10 +614,14 @@ export function useLudoGame() {
       addToast({
         type: 'warning',
         title: 'Illegal Move',
-        message: 'This token cannot move with the current dice value.',
+        message: 'This token cannot make that move.',
       });
       return;
     }
+
+    // Reset current player's misses
+    const curColor = stateToUse.activeColors[stateToUse.activeColorIndex];
+    playerMissesRef.current[curColor] = 0;
 
     if (stateToUse.mode === 'online_multiplayer') {
       sendWSAction({
@@ -686,8 +634,8 @@ export function useLudoGame() {
         sounds.playCapture();
         addToast({
           type: 'info',
-          title: 'Capture!',
-          message: `Captured ${moveResult.capturedColor.toUpperCase()} token! Earned an extra turn!`,
+          title: 'Token Captured!',
+          message: `Captured ${moveResult.capturedColor.toUpperCase()} token! Bonus turn awarded!`,
         });
       } else if (moveResult.reachedHome) {
         sounds.playTokenHome();
@@ -696,6 +644,104 @@ export function useLudoGame() {
       }
       setGameState(moveResult.newState);
     }
+  };
+
+  // Start Stake Game (2P, 3P, 4P with specific stake and 15s turn limit)
+  const handleStartStakeGame = (
+    stakeUGX: number,
+    playerCount: 2 | 3 | 4,
+    diceSkin: DiceSkin
+  ) => {
+    sounds.playButton();
+    playerMissesRef.current = {};
+    setSelectedDiceSkin(diceSkin);
+
+    const humanPlayer = createInitialPlayer(
+      'p_red',
+      profile.name.toLowerCase().replace(/[^a-z]/g, '') || 'player',
+      profile.avatar,
+      'red',
+      'human',
+      undefined,
+      true
+    );
+
+    const contenderNames = ['mukasa', 'namubiru', 'okello', 'tendo'];
+    const contenderAvatars = ['🦁', '⚡', '👑', '🎯'];
+
+    let players: Player[] = [humanPlayer];
+
+    if (playerCount === 2) {
+      // 1v1 Duel on opposite side (Red vs Yellow)
+      const p2 = createInitialPlayer(
+        'p_yellow',
+        contenderNames[0],
+        contenderAvatars[0],
+        'yellow',
+        'bot',
+        'medium'
+      );
+      players.push(p2);
+    } else if (playerCount === 3) {
+      const p2 = createInitialPlayer(
+        'p_green',
+        contenderNames[0],
+        contenderAvatars[0],
+        'green',
+        'bot',
+        'medium'
+      );
+      const p3 = createInitialPlayer(
+        'p_yellow',
+        contenderNames[1],
+        contenderAvatars[1],
+        'yellow',
+        'bot',
+        'medium'
+      );
+      players.push(p2, p3);
+    } else {
+      const p2 = createInitialPlayer(
+        'p_green',
+        contenderNames[0],
+        contenderAvatars[0],
+        'green',
+        'bot',
+        'medium'
+      );
+      const p3 = createInitialPlayer(
+        'p_yellow',
+        contenderNames[1],
+        contenderAvatars[1],
+        'yellow',
+        'bot',
+        'medium'
+      );
+      const p4 = createInitialPlayer(
+        'p_blue',
+        contenderNames[2],
+        contenderAvatars[2],
+        'blue',
+        'bot',
+        'medium'
+      );
+      players.push(p2, p3, p4);
+    }
+
+    const initial = createInitialGameState('LOCAL', 'local_pass_play', players, 15);
+    initial.startedAt = Date.now();
+    initial.status = 'playing';
+    initial.lastMoveDescription = `Challenge Started! Stake: UGX ${stakeUGX.toLocaleString()} (${playerCount}P)`;
+
+    setGameState(initial);
+    setActiveModal(null);
+
+    const prizeCalc = calculatePrizePool(stakeUGX, playerCount);
+    addToast({
+      type: 'success',
+      title: 'Match Commenced!',
+      message: `Stake: UGX ${stakeUGX.toLocaleString()} • Winner Prize: UGX ${prizeCalc.winnerPrize.toLocaleString()} (15s Turn Timer)`,
+    });
   };
 
   // Start Local Game
@@ -710,8 +756,9 @@ export function useLudoGame() {
     }[]
   ) => {
     sounds.playButton();
+    playerMissesRef.current = {};
+
     let adjustedConfigs = [...configs];
-    // When two players are versing each other, their positions must be on the opposite side of the board!
     if (adjustedConfigs.length === 2) {
       const p1Color = adjustedConfigs[0].color;
       const oppColor = getOppositeColor(p1Color);
@@ -733,8 +780,9 @@ export function useLudoGame() {
       )
     );
 
-    const initial = createInitialGameState('LOCAL', mode, players, 30);
+    const initial = createInitialGameState('LOCAL', mode, players, 15);
     initial.startedAt = Date.now();
+    initial.status = 'playing';
     setGameState(initial);
     setActiveModal(null);
   };
@@ -744,9 +792,8 @@ export function useLudoGame() {
     hostName: string,
     avatar: string,
     color: PlayerColor,
-    turnTimeLimit: number,
-    withBots: boolean,
-    isCompetitive: boolean = true
+    turnTimeLimit: number = 15,
+    withBots: boolean = true
   ) => {
     sounds.playButton();
     connectWebSocket((socket) => {
@@ -758,9 +805,9 @@ export function useLudoGame() {
             avatar,
             color,
             maxPlayers: 4,
-            turnTimeLimit,
+            turnTimeLimit: 15,
             withBots,
-            isCompetitive,
+            isCompetitive: true,
           },
         })
       );
@@ -838,13 +885,11 @@ export function useLudoGame() {
   };
 
   const handleInviteFriendToGame = (friend: Friend) => {
-    // Generate private room code
-    const generatedRoom = `LUDO_${Math.floor(1000 + Math.random() * 9000)}`;
-    handleCreateOnlineRoom(profile.name, profile.avatar, profile.preferredColor, 30, true, true);
+    handleCreateOnlineRoom(profile.name, profile.avatar, profile.preferredColor, 15, true);
     addToast({
       type: 'success',
       title: 'Invitation Sent',
-      message: `Invited ${friend.name} to private match #${generatedRoom}!`,
+      message: `Invited ${friend.name} to private match!`,
     });
   };
 
@@ -954,8 +999,12 @@ export function useLudoGame() {
     isRollingAnimation,
     myPlayerId,
     gameState,
+    isOnline,
+    selectedDiceSkin,
+    setSelectedDiceSkin,
     handleRollDice,
     handleMoveToken,
+    handleStartStakeGame,
     handleStartLocalGame,
     handleCreateOnlineRoom,
     handleJoinOnlineRoom,

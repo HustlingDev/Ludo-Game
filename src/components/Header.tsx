@@ -256,18 +256,6 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
-        {/* Chat Toggle */}
-        <button
-          onClick={() => {
-            sounds.playButton();
-            onToggleChat();
-          }}
-          className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 transition relative"
-          title="Match Chat & Reactions"
-        >
-          <MessageSquare className="w-4 h-4" />
-        </button>
-
         {/* Rules Guide */}
         <button
           onClick={() => {

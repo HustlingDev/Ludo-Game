@@ -1,179 +1,207 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, UserPlus, Shield, UserCheck, X, Sparkles } from 'lucide-react';
+import { User, Smartphone, ShieldCheck, X, Sparkles, Check, AlertCircle } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+const AVATAR_OPTIONS = ['👑', '⚡', '🐉', '🦁', '🚀', '🎯', '🔥', '💎', '🦊', '🐼', '🤖', '🎲'];
+
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { user, userProfile, signInGuest, signInEmail, signUpEmail, signOut, loading } = useAuth();
-  const [tab, setTab] = useState<'login' | 'signup' | 'guest'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const { userProfile, updateUserProfile, signInGoogle, signOut } = useAuth();
+
+  const [avatar, setAvatar] = useState(userProfile?.avatar || '👑');
+  const [username, setUsername] = useState(userProfile?.username || '');
+  const [phone, setPhone] = useState(userProfile?.phone || '');
+  const [usernameError, setUsernameError] = useState('');
+  const [savedMsg, setSavedMsg] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      if (tab === 'login') {
-        await signInEmail(email, password);
-        onClose();
-      } else if (tab === 'signup') {
-        if (!username.trim()) throw new Error('Username is required');
-        await signUpEmail(email, password, username);
-        onClose();
-      } else if (tab === 'guest') {
-        await signInGuest(username || 'Guest Player');
-        onClose();
-      }
-    } catch (err: any) {
-      setError(err?.message || 'Authentication error occurred');
-    } finally {
-      setSubmitting(false);
+  const handleUsernameChange = (val: string) => {
+    const rawLower = val.toLowerCase();
+    const sanitized = rawLower.replace(/[^a-z]/g, '');
+    setUsername(sanitized);
+
+    if (val !== sanitized) {
+      setUsernameError('Only lowercase letters (a-z) allowed, no numbers or spaces');
+    } else if (sanitized.length > 0 && sanitized.length < 3) {
+      setUsernameError('Must be at least 3 letters');
+    } else {
+      setUsernameError('');
     }
   };
 
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanUsername = username.toLowerCase().replace(/[^a-z]/g, '');
+    if (cleanUsername.length < 3) {
+      setUsernameError('Username must be at least 3 lowercase letters (no numbers)');
+      return;
+    }
+
+    await updateUserProfile({
+      username: cleanUsername,
+      displayName: cleanUsername,
+      phone: phone.trim(),
+      avatar,
+    });
+
+    setSavedMsg(true);
+    setTimeout(() => {
+      setSavedMsg(false);
+      onClose();
+    }, 1200);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-md p-6 text-white shadow-2xl relative">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl w-full max-w-md p-6 text-white shadow-2xl relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg transition"
+          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-xl hover:bg-slate-800 transition"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {user ? (
-          <div className="text-center py-4 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-3xl mx-auto">
-              {userProfile?.avatar || '👤'}
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">{userProfile?.displayName || user.displayName || 'Player'}</h2>
-              <p className="text-sm text-slate-400">{user.email || 'Guest Account'}</p>
-            </div>
-            <div className="bg-slate-800/80 rounded-xl p-3 text-xs flex justify-around border border-slate-700">
-              <div>
-                <span className="text-slate-400 block">Rating</span>
-                <span className="font-semibold text-emerald-400">{userProfile?.rating || 1200}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block">Level</span>
-                <span className="font-semibold text-amber-400">{userProfile?.level || 1}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block">Games Won</span>
-                <span className="font-semibold text-blue-400">{userProfile?.gamesWon || 0}</span>
-              </div>
-            </div>
-            <button
-              onClick={async () => {
-                await signOut();
-                onClose();
-              }}
-              className="w-full py-2.5 px-4 bg-rose-600/80 hover:bg-rose-600 font-medium rounded-xl transition"
-            >
-              Sign Out
-            </button>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <User className="w-4 h-4" />
           </div>
-        ) : (
           <div>
-            <div className="flex items-center gap-2 mb-6">
-              <Shield className="w-6 h-6 text-amber-400" />
-              <h2 className="text-xl font-bold">Ludo Multiplayer Account</h2>
-            </div>
+            <h2 className="text-base font-black text-white">Player Profile & Settings</h2>
+            <p className="text-xs text-slate-400">Manage your avatar, username & mobile money number</p>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-3 gap-1 bg-slate-800 p-1 rounded-xl mb-6 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => { setTab('login'); setError(null); }}
-                className={`py-2 rounded-lg transition ${tab === 'login' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => { setTab('signup'); setError(null); }}
-                className={`py-2 rounded-lg transition ${tab === 'signup' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-              >
-                Sign Up
-              </button>
-              <button
-                type="button"
-                onClick={() => { setTab('guest'); setError(null); }}
-                className={`py-2 rounded-lg transition ${tab === 'guest' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-              >
-                Guest Play
-              </button>
-            </div>
-
-            {error && (
-              <div className="bg-rose-500/20 border border-rose-500/50 rounded-xl p-3 text-xs text-rose-300 mb-4">
-                {error}
+        {userProfile ? (
+          <form onSubmit={handleSave} className="space-y-4">
+            {/* Avatar Selector */}
+            <div>
+              <label className="block text-xs font-black text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>Player Avatar</span>
+                <span className="text-xl">{avatar}</span>
+              </label>
+              <div className="grid grid-cols-6 gap-1.5">
+                {AVATAR_OPTIONS.map((av) => (
+                  <button
+                    type="button"
+                    key={av}
+                    onClick={() => setAvatar(av)}
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-lg flex items-center justify-center transition ${
+                      avatar === av
+                        ? 'bg-amber-500 border border-amber-300 scale-105 shadow'
+                        : 'bg-slate-800 hover:bg-slate-700 border border-slate-700'
+                    }`}
+                  >
+                    {av}
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {tab !== 'login' && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Username / Display Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="e.g. MasterLudo"
-                    className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+            {/* Username (Only lowercase letters, no numbers) */}
+            <div>
+              <label className="block text-xs font-black text-slate-300 mb-1 flex items-center justify-between">
+                <span>Username:</span>
+                <span className="text-[10px] text-slate-400">only lowercase letters, no numbers</span>
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => handleUsernameChange(e.target.value)}
+                placeholder="e.g. katoderrick"
+                maxLength={15}
+                required
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-amber-500"
+              />
+              {usernameError && (
+                <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  <span>{usernameError}</span>
+                </p>
               )}
+            </div>
 
-              {tab !== 'guest' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="player@example.com"
-                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Password</label>
-                    <input
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                </>
-              )}
+            {/* Phone Number (Uganda) */}
+            <div>
+              <label className="block text-xs font-black text-slate-300 mb-1 flex items-center justify-between">
+                <span>Mobile Money Recipient Number:</span>
+                <span className="text-[10px] text-emerald-400 font-bold">MTN / Airtel</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="0772123456 or +256..."
+                  required
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-amber-500"
+                />
+                <Smartphone className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2" />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Withdrawals from your wallet will automatically be sent to this number.
+              </p>
+            </div>
 
+            {/* Save Button */}
+            <div className="pt-2 flex gap-2">
               <button
                 type="submit"
-                disabled={submitting || loading}
-                className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 font-semibold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:brightness-110 active:scale-95 text-slate-950 font-black text-xs sm:text-sm shadow-md flex items-center justify-center gap-1.5 transition"
               >
-                {tab === 'login' && <LogIn className="w-4 h-4" />}
-                {tab === 'signup' && <UserPlus className="w-4 h-4" />}
-                {tab === 'guest' && <Sparkles className="w-4 h-4" />}
-                {submitting ? 'Connecting...' : tab === 'login' ? 'Sign In' : tab === 'signup' ? 'Create Account' : 'Play as Guest'}
+                {savedMsg ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-950" />
+                    <span>Saved!</span>
+                  </>
+                ) : (
+                  <span>Save Changes</span>
+                )}
               </button>
-            </form>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  await signOut();
+                  onClose();
+                }}
+                className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-rose-400 font-bold text-xs rounded-xl border border-slate-700 transition"
+              >
+                Sign Out
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="text-center py-4 space-y-4">
+            <p className="text-xs text-slate-300">Sign in with your Google account to play real-money skill challenges.</p>
+            <button
+              onClick={() => signInGoogle()}
+              className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.87c2.26-2.09 3.67-5.17 3.67-9.15z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.87-3.05c-1.08.72-2.45 1.16-4.06 1.16-3.13 0-5.78-2.11-6.73-4.96H1.26v3.15C3.25 21.37 7.34 24 12 24z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.26C.46 8.23 0 10.06 0 12s.46 3.77 1.26 5.39l4.01-3.15z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.25 2.63 1.26 6.61l4.01 3.15c.95-2.85 3.6-4.96 6.73-4.96z"
+                />
+              </svg>
+              <span>Sign in with Google</span>
+            </button>
           </div>
         )}
       </div>
