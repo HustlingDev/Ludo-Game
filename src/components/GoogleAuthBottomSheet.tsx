@@ -101,12 +101,16 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
       await signInGoogle();
     } catch (err: any) {
       console.error('Google Sign In Error:', err);
-      if (err?.code === 'auth/popup-closed-by-user') {
+      if (err?.code === 'auth/unauthorized-domain' || err?.message?.includes('auth/unauthorized-domain')) {
+        setAuthError(
+          `Domain "${window.location.hostname}" is not authorized in Firebase. Add "${window.location.hostname}" to Firebase Console -> Authentication -> Settings -> Authorized domains.`
+        );
+      } else if (err?.code === 'auth/popup-closed-by-user') {
         setAuthError('Sign in window was closed. Please try again.');
       } else if (err?.code === 'auth/cancelled-popup-request') {
         setAuthError('Sign in process was cancelled.');
       } else if (err?.code === 'auth/popup-blocked') {
-        setAuthError('Popup was blocked by your browser. Please enable popups or tap sign in again.');
+        setAuthError('Popup was blocked by your browser. Please allow popups for this site and tap sign in again.');
       } else {
         setAuthError(err?.message || 'Could not complete Google sign-in. Please try again.');
       }
