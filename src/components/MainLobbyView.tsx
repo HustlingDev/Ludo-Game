@@ -264,7 +264,7 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
               Welcome back, <span className="text-amber-400">{profile.name}</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-              Challenge online players directly, play on opposite sides with 3D dice rolls, or compete in UGX cash battles powered by Pesapal.
+              Challenge online players directly, play on opposite sides with 3D dice rolls, or compete in UGX cash battles powered by PesaJet Mobile Money.
             </p>
           </div>
 
@@ -490,7 +490,7 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
             <div className="text-center space-y-1">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-black">
                 <Flame className="w-3.5 h-3.5" />
-                <span>Pesapal UGX Competitive Cash Arena</span>
+                <span>PesaJet UGX Competitive Cash Arena</span>
               </div>
               <h3 className="text-lg font-black text-white">Select Stake Amount</h3>
               <p className="text-xs text-slate-400">

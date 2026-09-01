@@ -244,7 +244,13 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(
+    express.json({
+      verify: (req, _res, buf) => {
+        (req as any).rawBody = buf;
+      },
+    })
+  );
 
   // Platform & Economics API Routes
   app.use('/api', apiRouter);

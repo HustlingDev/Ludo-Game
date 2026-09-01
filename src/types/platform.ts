@@ -100,7 +100,7 @@ export interface WalletTransactionDoc {
 }
 
 /**
- * Pesapal 3.0 Integration
+ * PesaJet 1.0 Mobile Money Integration (MTN & Airtel Uganda)
  */
 export type DepositStatus =
   | 'pending'
@@ -114,7 +114,9 @@ export interface DepositDoc {
   id: string;
   userId: string;
   merchantReference: string;
-  pesapalOrderTrackingId?: string;
+  pesajetTransactionId?: string;
+  phoneNumber?: string;
+  provider?: 'mtn' | 'airtel';
   amount: number; // Integer in UGX
   currency: Currency;
   status: DepositStatus;
@@ -122,7 +124,6 @@ export interface DepositDoc {
   updatedAt: number;
   completedAt?: number;
   failureReason?: string;
-  redirectUrl?: string;
   metadata?: Record<string, any>;
 }
 

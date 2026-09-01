@@ -2,8 +2,13 @@ import crypto from 'crypto';
 import express, { Request, Response } from 'express';
 import { ALLOWED_STAKES, GAME_ECONOMICS } from '../src/types/platform';
 import {
-  getPesapalConfig,
-  getPesapalAuthToken,
+  getPesaJetConfig,
+  createPesaJetCollection,
+  createPesaJetDisbursement,
+  getPesaJetTransactionStatus,
+  verifyPesaJetWebhookSignature,
+  formatUgandaPhone,
+  detectUgandaProvider,
   validateStakeAmount,
   calculateMatchPrizeAndFee,
 } from './services/economicsService';
@@ -14,12 +19,14 @@ const router = express.Router();
  * Health check
  */
 router.get('/health', (req: Request, res: Response) => {
+  const config = getPesaJetConfig();
   res.json({
     status: 'ok',
-    environment: process.env.PESAPAL_ENVIRONMENT || 'production',
+    provider: 'PesaJet 1.0 (MTN & Airtel Uganda)',
     currency: GAME_ECONOMICS.currency,
     allowedStakes: ALLOWED_STAKES,
     platformFee: `${GAME_ECONOMICS.platformFeePercentage}%`,
+    webhookConfigured: Boolean(config.webhookSecret),
     timestamp: Date.now(),
   });
 });
@@ -64,13 +71,11 @@ router.post('/dice/roll', (req: Request, res: Response) => {
   });
 });
 
-/**
- * Pesapal 3.0 API Order Creation Endpoint
- */
-router.post('/pesapal/order', async (req: Request, res: Response) => {
+async function handleCollectionRequest(req: Request, res: Response) {
   try {
-    const { amount, currency, userId, email, phone, description } = req.body;
+    const { amount, phone, phoneNumber, provider, userId, description } = req.body;
     const numAmount = parseInt(amount, 10);
+    const targetPhone = phone || phoneNumber;
 
     if (isNaN(numAmount) || numAmount < GAME_ECONOMICS.minDepositUGX || numAmount > GAME_ECONOMICS.maxDepositUGX) {
       return res.status(400).json({
@@ -78,78 +83,172 @@ router.post('/pesapal/order', async (req: Request, res: Response) => {
       });
     }
 
-    if (!phone || String(phone).trim().length < 9) {
+    if (!targetPhone || String(targetPhone).trim().length < 9) {
       return res.status(400).json({
-        error: 'Please provide a valid Ugandan Mobile Money phone number (e.g., 0770000000 or 256770000000).',
+        error: 'Please provide a valid Ugandan Mobile Money phone number (e.g. 0794915844 / +256794915844).',
       });
     }
 
-    // Format phone to 256 standard
-    let cleanPhone = String(phone).replace(/[^0-9]/g, '');
-    if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
-      cleanPhone = '256' + cleanPhone.substring(1);
-    } else if (!cleanPhone.startsWith('256') && cleanPhone.length === 9) {
-      cleanPhone = '256' + cleanPhone;
-    }
+    const formattedPhone = formatUgandaPhone(targetPhone);
+    const detectedProvider = provider || detectUgandaProvider(formattedPhone);
+    const reference = `LUDO-${userId ? String(userId).slice(0, 6) : 'DEP'}-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+    const idempotencyKey = `dep-${reference}`;
 
-    const config = getPesapalConfig();
-    const merchantReference = `LUDO-${userId ? String(userId).slice(0, 6) : 'LIVE'}-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-
-    // Attempt live Pesapal 3.0 authentication
-    const token = await getPesapalAuthToken();
-    if (!token) {
-      return res.status(502).json({
-        error: 'Pesapal Authentication Error: Unable to authenticate with Pesapal API. Please verify that PESAPAL_CONSUMER_KEY and PESAPAL_CONSUMER_SECRET are configured with your live merchant credentials.',
-      });
-    }
-
-    const orderPayload = {
-      id: merchantReference,
-      currency: currency || 'UGX',
+    const result = await createPesaJetCollection({
       amount: numAmount,
-      description: description || `Ludo Real-Money Wallet Deposit (UGX ${numAmount.toLocaleString()})`,
-      callback_url: config.callbackUrl,
-      cancellation_url: config.cancellationUrl,
-      notification_id: config.ipnId || undefined,
-      billing_address: {
-        email_address: email || 'payments@ludo-arena.com',
-        phone_number: cleanPhone,
-        country_code: 'UG',
-        first_name: 'Ludo',
-        last_name: 'Player',
-      },
-    };
-
-    const pesapalRes = await fetch(`${config.baseUrl}/api/Transactions/SubmitOrder-Process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(orderPayload),
+      phoneNumber: formattedPhone,
+      provider: detectedProvider,
+      reference,
+      idempotencyKey,
+      description: description || `Ludo Arena Deposit (UGX ${numAmount.toLocaleString()})`,
     });
 
-    const pesapalData = await pesapalRes.json();
-    if (!pesapalRes.ok || !pesapalData.redirect_url) {
-      console.error('[PESAPAL] SubmitOrder error response:', pesapalData);
-      return res.status(pesapalRes.status || 500).json({
-        error: pesapalData.error?.message || pesapalData.message || 'Pesapal Gateway rejected order submission. Please check your Pesapal merchant configuration.',
-        details: pesapalData,
+    if (!result.success) {
+      console.warn('[PESAJET COLLECTION ERROR]', result.error, result.data);
+      return res.status(400).json({
+        success: false,
+        error: result.error || 'Failed to initiate Mobile Money deposit request with PesaJet.',
+        reference,
+        phoneNumber: formattedPhone,
+        provider: detectedProvider,
       });
     }
 
     return res.json({
       success: true,
-      merchantReference,
-      pesapalTrackingId: pesapalData.order_tracking_id,
-      redirectUrl: pesapalData.redirect_url,
-      status: pesapalData.status || '200',
+      transactionId: result.transactionId,
+      reference,
+      phoneNumber: formattedPhone,
+      provider: detectedProvider,
+      amount: numAmount,
+      status: result.status || 'PENDING',
+      message: `Mobile Money payment prompt sent to ${formattedPhone} (${detectedProvider.toUpperCase()}). Please enter your PIN on your phone to complete deposit.`,
     });
   } catch (err: any) {
-    console.error('[PESAPAL] Order creation exception:', err);
-    res.status(500).json({ error: err.message || 'Failed to initialize live Pesapal order' });
+    console.error('[PESAJET] Collection Exception:', err);
+    res.status(500).json({ error: err.message || 'Server error processing PesaJet deposit' });
   }
+}
+
+/**
+ * PesaJet Mobile Money Deposit (Collection) Endpoint
+ * Triggers a real-time Mobile Money USSD prompt on the customer's phone
+ */
+router.post('/pesajet/collection', handleCollectionRequest);
+router.post('/payments/collection', handleCollectionRequest);
+
+/**
+ * PesaJet Mobile Money Withdrawal (Disbursement) Endpoint
+ */
+router.post('/pesajet/disbursement', async (req: Request, res: Response) => {
+  try {
+    const { amount, phone, phoneNumber, provider, userId } = req.body;
+    const numAmount = parseInt(amount, 10);
+    const targetPhone = phone || phoneNumber;
+
+    if (isNaN(numAmount) || numAmount < GAME_ECONOMICS.minWithdrawalUGX) {
+      return res.status(400).json({
+        error: `Minimum withdrawal is UGX ${GAME_ECONOMICS.minWithdrawalUGX.toLocaleString()}`,
+      });
+    }
+
+    if (!targetPhone || String(targetPhone).trim().length < 9) {
+      return res.status(400).json({
+        error: 'Please provide a valid Ugandan Mobile Money phone number for payout.',
+      });
+    }
+
+    const formattedPhone = formatUgandaPhone(targetPhone);
+    const detectedProvider = provider || detectUgandaProvider(formattedPhone);
+    const reference = `WTH-${userId ? String(userId).slice(0, 6) : 'USR'}-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+    const idempotencyKey = `wth-${reference}`;
+
+    const result = await createPesaJetDisbursement({
+      amount: numAmount,
+      phoneNumber: formattedPhone,
+      provider: detectedProvider,
+      reference,
+      idempotencyKey,
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error || 'Failed to dispatch payout via PesaJet.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      transactionId: result.transactionId,
+      reference,
+      phoneNumber: formattedPhone,
+      provider: detectedProvider,
+      amount: numAmount,
+      status: result.status || 'PENDING',
+      message: `Withdrawal of UGX ${numAmount.toLocaleString()} initiated to ${formattedPhone} (${detectedProvider.toUpperCase()}).`,
+    });
+  } catch (err: any) {
+    console.error('[PESAJET] Disbursement Exception:', err);
+    res.status(500).json({ error: err.message || 'Server error processing PesaJet payout' });
+  }
+});
+
+/**
+ * Query Transaction Status from PesaJet
+ */
+router.get('/pesajet/status/:id', async (req: Request, res: Response) => {
+  try {
+    const transactionId = req.params.id;
+    if (!transactionId) {
+      return res.status(400).json({ error: 'Transaction ID required' });
+    }
+
+    const result = await getPesaJetTransactionStatus(transactionId);
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error querying status' });
+  }
+});
+
+/**
+ * PesaJet Webhook Endpoint
+ * Verifies HMAC-SHA256 signature using PESAJET_WEBHOOK_SECRET
+ */
+router.post('/pesajet/webhook', (req: Request, res: Response) => {
+  const signature =
+    (req.headers['x-pesajet-signature'] as string) ||
+    (req.headers['x-signature'] as string) ||
+    (req.headers['pesajet-signature'] as string) ||
+    (req.headers['signature'] as string);
+
+  const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+
+  console.log(`[PESAJET WEBHOOK] Received webhook payload:`, req.body);
+
+  if (signature) {
+    const isValid = verifyPesaJetWebhookSignature(rawBody, signature);
+    if (!isValid) {
+      console.warn(`[PESAJET WEBHOOK] Invalid signature header received: ${signature}`);
+      return res.status(401).json({ error: 'Invalid webhook signature' });
+    }
+  }
+
+  const { type, status, reference, transactionId, amount, phoneNumber } = req.body || {};
+
+  console.log(`[PESAJET WEBHOOK] Transaction ${transactionId || reference} (${type}) is now: ${status} for ${amount} UGX (${phoneNumber})`);
+
+  // Webhook acknowledged successfully
+  res.status(200).json({
+    received: true,
+    transactionId: transactionId || reference,
+    status: status || 'PROCESSED',
+    timestamp: Date.now(),
+  });
 });
 
 // Online Players Lobby Directory
@@ -226,22 +325,6 @@ router.post('/challenges/send', (req: Request, res: Response) => {
     roomId,
     message: `Challenge accepted by ${opponentName}! 1v1 duel starting on opposite corners!`,
     stakeUGX: stakeUGX || 0,
-  });
-});
-
-/**
- * Pesapal 3.0 IPN & Callback Verification Endpoint
- */
-router.all('/pesapal/ipn', (req: Request, res: Response) => {
-  const { OrderTrackingId, OrderMerchantReference, OrderNotificationType } = req.query;
-  console.log(`[PESAPAL IPN] Received IPN callback: Ref: ${OrderMerchantReference}, Tracking: ${OrderTrackingId}, Type: ${OrderNotificationType}`);
-
-  // Idempotent IPN handler
-  res.status(200).json({
-    status: '200',
-    message: 'IPN received and queued for server verification',
-    orderTrackingId: OrderTrackingId,
-    merchantReference: OrderMerchantReference,
   });
 });
 

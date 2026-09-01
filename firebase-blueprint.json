@@ -59,14 +59,16 @@
       "required": ["id", "userId", "type", "amount", "currency", "reference", "status", "createdAt"]
     },
     "deposits": {
-      "title": "Pesapal Deposits",
-      "description": "Pesapal 3.0 payments tracking records with tracking IDs and verification states",
+      "title": "PesaJet Deposits",
+      "description": "PesaJet 1.0 payments tracking records with transaction IDs and Mobile Money verification states",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string" },
         "merchantReference": { "type": "string" },
-        "pesapalOrderTrackingId": { "type": "string" },
+        "pesajetTransactionId": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "provider": { "type": "string", "enum": ["mtn", "airtel"] },
         "amount": { "type": "number" },
         "currency": { "type": "string", "enum": ["UGX"] },
         "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed", "cancelled", "reversed"] },

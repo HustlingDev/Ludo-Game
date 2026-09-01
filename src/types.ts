@@ -77,7 +77,7 @@ export interface AdminTransactionRecord {
   amountUGX: number;
   status: 'COMPLETED' | 'PENDING' | 'FAILED';
   merchantReference: string;
-  pesapalTrackingId?: string;
+  pesajetTransactionId?: string;
   timestamp: number;
 }
 
