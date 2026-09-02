@@ -1,12 +1,12 @@
 {
-  "projectId": "gen-lang-client-0663840253",
-  "appId": "1:849262703835:web:75612f140b8697fc9e88fe",
-  "apiKey": "AIzaSyAukzYVVFndY6vU6CyhknVEmH8uZ0YoGig",
-  "authDomain": "gen-lang-client-0663840253.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-ludorealtimemult-71ce6e85-2a60-47d1-8dff-6831faf2bcd2",
-  "storageBucket": "gen-lang-client-0663840253.firebasestorage.app",
-  "messagingSenderId": "849262703835",
+  "projectId": "ludo-9aaec",
+  "appId": "1:999191211236:android:4d184a4f13474867ea10f1",
+  "apiKey": "AIzaSyDdZzsyh0yevERu_h98jUAK1IeWrnDXFEs",
+  "authDomain": "ludo-9aaec.firebaseapp.com",
+  "firestoreDatabaseId": "",
+  "storageBucket": "ludo-9aaec.firebasestorage.app",
+  "messagingSenderId": "999191211236",
   "measurementId": "",
-  "oAuthClientId": "849262703835-idm22i3g9fk3mobdtps5s03jmajgug1f.apps.googleusercontent.com",
+  "oAuthClientId": "999191211236-nmaml6uoqtb0o9v3sdq1nk28rjfimp6c.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }
