@@ -21,12 +21,12 @@ interface WalletModalProps {
   onOpenSettings?: () => void;
 }
 
-const DEPOSIT_PRESETS = [509, 1000, 2000, 5000, 10000, 20000];
+const DEPOSIT_PRESETS = [500, 1000, 2000, 5000, 10000, 20000];
 
 export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpenSettings }) => {
   const { user, wallet, userProfile, creditWallet, debitWallet } = useAuth();
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
-  const [selectedAmount, setSelectedAmount] = useState<number>(509);
+  const [selectedAmount, setSelectedAmount] = useState<number>(500);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState<string>('1000');
@@ -260,7 +260,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
           <form onSubmit={handleDeposit} className="space-y-4">
             <div>
               <label className="block text-xs font-black text-slate-300 mb-2">
-                Select Deposit Amount (Begins from UGX 509)
+                Select Deposit Amount (Begins from UGX 500)
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {DEPOSIT_PRESETS.map((stake) => (
@@ -286,7 +286,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
             {/* Custom Amount */}
             <div>
               <label className="block text-xs font-semibold text-slate-400 mb-1">
-                Or Custom Amount (min UGX 509)
+                Or Custom Amount (min UGX 500)
               </label>
               <input
                 type="number"
@@ -295,8 +295,8 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
                   setCustomAmount(e.target.value);
                   if (e.target.value) setSelectedAmount(0);
                 }}
-                placeholder="Enter custom UGX amount (min 509)"
-                min={509}
+                placeholder="Enter custom UGX amount (min 500)"
+                min={500}
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
@@ -350,13 +350,13 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
             <div className="pt-1">
               <button
                 type="submit"
-                disabled={loading || !currentAmount || currentAmount < 509 || !registeredPhone}
+                disabled={loading || !currentAmount || currentAmount < 500 || !registeredPhone}
                 className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 font-black rounded-2xl transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 text-xs sm:text-sm text-white"
               >
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
                 {loading
                   ? 'Initiating Prompt...'
-                  : `Deposit UGX ${currentAmount ? currentAmount.toLocaleString() : '509'} via Mobile Money`}
+                  : `Deposit UGX ${currentAmount ? currentAmount.toLocaleString() : '500'} via Mobile Money`}
               </button>
             </div>
           </form>

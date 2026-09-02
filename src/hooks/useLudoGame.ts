@@ -484,7 +484,24 @@ export function useLudoGame() {
             addToast({
               type: 'error',
               title: 'Player Kicked!',
-              message: `⚠️ ${curPlayer?.name || 'Player'} was kicked for missing 2 consecutive turns! Stake forfeited and distributed to remaining players.`,
+              message: `⚠️ ${curPlayer?.name || 'Player'} was kicked for missing 2 consecutive turns! Pieces removed. Remaining players continue.`,
+            });
+
+            // Remove kicked player's pieces from active board
+            const updatedPlayers = prev.players.map((p) => {
+              if (p.color === curColor) {
+                return {
+                  ...p,
+                  isConnected: false,
+                  tokens: p.tokens.map((t) => ({
+                    ...t,
+                    state: 'YARD' as const,
+                    step: -1,
+                    trackIndex: -1,
+                  })),
+                };
+              }
+              return p;
             });
 
             // Remove or eliminate kicked player from active match
@@ -495,6 +512,7 @@ export function useLudoGame() {
               sounds.playVictory();
               return {
                 ...prev,
+                players: updatedPlayers,
                 status: 'finished',
                 winnerOrder: [winnerC],
                 lastMoveDescription: `${curPlayer?.name || 'Player'} forfeited! Match concluded.`,
@@ -508,6 +526,7 @@ export function useLudoGame() {
 
             return {
               ...prev,
+              players: updatedPlayers,
               activeColors: remainingColors,
               activeColorIndex: nextIndex,
               hasRolled: false,
@@ -517,7 +536,7 @@ export function useLudoGame() {
               consecutiveSixes: 0,
               turnTimeLimit: nextTurnLimit,
               turnTimeRemaining: nextTurnLimit,
-              lastMoveDescription: `${curPlayer?.name} was kicked for inactivity.`,
+              lastMoveDescription: `${curPlayer?.name} was kicked for inactivity. Their pieces were removed.`,
             };
           } else {
             // First Miss (Strike 1) -> Pass turn with warning

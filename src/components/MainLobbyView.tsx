@@ -162,46 +162,9 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
   // Real-time members inside the current stake room
   const currentStake = activeStakeRoom || 500;
   const prizePoolCalc = calculatePrizePool(currentStake, playerCount);
-  const currentServiceFee = getServiceFee(currentStake, playerCount);
 
   const playersInThisStake = onlinePlayers.filter((p) => (p.stake || 500) === currentStake);
-  const displayPlayers =
-    playersInThisStake.length > 0
-      ? playersInThisStake
-      : [
-          {
-            id: 'contender_1',
-            name: 'mukasa',
-            avatar: '🦁',
-            rating: 1320,
-            stake: currentStake,
-            status: 'available' as const,
-          },
-          {
-            id: 'contender_2',
-            name: 'namubiru',
-            avatar: '⚡',
-            rating: 1285,
-            stake: currentStake,
-            status: 'available' as const,
-          },
-          {
-            id: 'contender_3',
-            name: 'katoderrick',
-            avatar: '👑',
-            rating: 1410,
-            stake: currentStake,
-            status: 'available' as const,
-          },
-          {
-            id: 'contender_4',
-            name: 'okello',
-            avatar: '🎯',
-            rating: 1250,
-            stake: currentStake,
-            status: 'available' as const,
-          },
-        ];
+  const displayPlayers = playersInThisStake;
 
   return (
     <div className="w-full h-[calc(100vh-3.8rem)] max-h-screen overflow-hidden flex flex-col p-2 sm:p-3.5 gap-2.5 select-none bg-slate-950 text-slate-100">
@@ -279,9 +242,6 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
           <div className="flex-1 min-h-0 grid grid-cols-2 sm:grid-cols-3 gap-2.5 overflow-y-auto pr-0.5">
             {ALLOWED_STAKES.map((stake) => {
               const maxWin = calculatePrizePool(stake, 4).winnerPrize;
-              const minWin = calculatePrizePool(stake, 2).winnerPrize;
-              const fee2P = getServiceFee(stake, 2);
-              const fee4P = getServiceFee(stake, 4);
 
               return (
                 <button
@@ -313,11 +273,10 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Card Footer Breakdown */}
+                  {/* Card Footer */}
                   <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
-                    <div>
-                      <span>Fee: </span>
-                      <span className="text-slate-300 font-bold">{fee2P} - {fee4P} UGX</span>
+                    <div className="text-slate-400 font-semibold">
+                      Real-Time Arena
                     </div>
                     <div className="flex items-center gap-1 font-bold text-amber-400 group-hover:translate-x-0.5 transition">
                       <span>Enter Room</span>
@@ -420,11 +379,11 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
               </div>
 
               <div className="text-center">
-                <div className="text-[10px] text-amber-400 font-bold">
-                  Service Fee (UGX)
+                <div className="text-[10px] text-sky-400 font-bold">
+                  Players
                 </div>
-                <div className="font-mono font-bold text-amber-400">
-                  - UGX {currentServiceFee.toLocaleString()}
+                <div className="font-mono font-bold text-sky-300">
+                  {playerCount} Players
                 </div>
               </div>
 
@@ -477,37 +436,47 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
 
             {/* List of Online Players in This Stake Selection */}
             <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-0.5">
-              {displayPlayers.map((player) => (
-                <div
-                  key={player.id}
-                  className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-between hover:border-amber-500/40 transition group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-base shadow-inner">
-                      {player.avatar}
-                    </div>
-                    <div>
-                      <div className="font-bold text-xs text-white group-hover:text-amber-400 transition font-mono lowercase">
-                        @{player.name}
-                      </div>
-                      <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
-                        <span>Stake: <strong className="text-white">UGX {player.stake || currentStake}</strong></span>
-                        <span>•</span>
-                        <span>⭐ <strong className="text-amber-400">{player.rating}</strong></span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleChallengePlayer(player, currentStake)}
-                    disabled={challengingPlayerId === player.id}
-                    className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 active:scale-95 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition disabled:opacity-50"
-                  >
-                    <Swords className="w-3.5 h-3.5" />
-                    <span>{challengingPlayerId === player.id ? 'Starting...' : 'Challenge'}</span>
-                  </button>
+              {displayPlayers.length === 0 ? (
+                <div className="h-full min-h-[140px] flex flex-col items-center justify-center text-center p-4 rounded-xl bg-slate-950/40 border border-dashed border-slate-800 text-slate-400">
+                  <Radio className="w-6 h-6 text-slate-600 mb-2 animate-pulse" />
+                  <div className="text-xs font-bold text-slate-300">No Other Players In This Room</div>
+                  <p className="text-[10px] text-slate-500 mt-1 max-w-[220px]">
+                    Click &quot;Find Match&quot; to queue up or share a private code with a friend to duel directly.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                displayPlayers.map((player) => (
+                  <div
+                    key={player.id}
+                    className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-between hover:border-amber-500/40 transition group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-base shadow-inner">
+                        {player.avatar}
+                      </div>
+                      <div>
+                        <div className="font-bold text-xs text-white group-hover:text-amber-400 transition font-mono lowercase">
+                          @{player.name}
+                        </div>
+                        <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                          <span>Stake: <strong className="text-white">UGX {player.stake || currentStake}</strong></span>
+                          <span>•</span>
+                          <span>⭐ <strong className="text-amber-400">{player.rating}</strong></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleChallengePlayer(player, currentStake)}
+                      disabled={challengingPlayerId === player.id}
+                      className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 active:scale-95 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition disabled:opacity-50"
+                    >
+                      <Swords className="w-3.5 h-3.5" />
+                      <span>{challengingPlayerId === player.id ? 'Starting...' : 'Challenge'}</span>
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Join by Private Code inside this Stake Room */}

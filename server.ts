@@ -39,6 +39,7 @@ interface ServerRoom {
   chatHistory: ChatMessage[];
   timerInterval?: NodeJS.Timeout;
   botTimeout?: NodeJS.Timeout;
+  playerMisses?: Record<string, number>;
 }
 
 const rooms = new Map<string, ServerRoom>();
@@ -113,51 +114,99 @@ function startRoomTimer(room: ServerRoom) {
 }
 
 function handleTurnTimeout(room: ServerRoom) {
+  if (room.state.status !== 'playing') return;
+
   const activeColor = room.state.activeColors[room.state.activeColorIndex];
   const activePlayer = room.state.players.find((p) => p.color === activeColor);
   if (!activePlayer) return;
 
-  if (!room.state.hasRolled) {
-    // Auto-roll dice on timeout
-    const diceVal = Math.floor(Math.random() * 6) + 1;
-    const { newState, hasValidMoves } = applyDiceRoll(room.state, diceVal);
-    room.state = newState;
-    broadcastToRoom(room, {
-      type: 'DICE_ROLLED',
-      payload: {
-        diceValue: diceVal,
-        playerColor: activeColor,
-        consecutiveSixes: newState.consecutiveSixes,
-      },
-    });
+  if (!room.playerMisses) {
+    room.playerMisses = {};
+  }
+
+  const curMisses = (room.playerMisses[activeColor] || 0) + 1;
+  room.playerMisses[activeColor] = curMisses;
+
+  // 2nd Miss -> Kick Player, remove their pieces from the board, and let the rest commence!
+  if (curMisses >= 2) {
+    const kickedName = activePlayer.name;
+
+    // Remove kicked player's pieces from board
+    activePlayer.tokens = activePlayer.tokens.map((t) => ({
+      ...t,
+      state: 'YARD' as const,
+      step: -1,
+      trackIndex: -1,
+    }));
+    activePlayer.isConnected = false;
+
+    const remainingColors = room.state.activeColors.filter((c) => c !== activeColor);
+
+    if (remainingColors.length <= 1) {
+      // Remaining player wins!
+      const winnerC = remainingColors[0] || 'red';
+      room.state.status = 'finished';
+      room.state.winnerOrder = [winnerC];
+      room.state.lastMoveDescription = `${kickedName} was kicked for missing 2 consecutive turns! Match finished.`;
+
+      broadcastToRoom(room, {
+        type: 'GAME_STATE_UPDATE',
+        payload: { state: room.state },
+      });
+      return;
+    }
+
+    const nextIndex = room.state.activeColorIndex % remainingColors.length;
+    const nextColor = remainingColors[nextIndex];
+    const nextMisses = room.playerMisses[nextColor] || 0;
+    const nextTurnLimit = nextMisses === 1 ? 20 : (room.state.turnTimeLimit || 15);
+
+    room.state = {
+      ...room.state,
+      activeColors: remainingColors,
+      activeColorIndex: nextIndex,
+      hasRolled: false,
+      canRoll: true,
+      validTokenMoves: [],
+      mustSelectToken: false,
+      consecutiveSixes: 0,
+      turnTimeLimit: nextTurnLimit,
+      turnTimeRemaining: nextTurnLimit,
+      lastMoveDescription: `${kickedName} was kicked for inactivity. Their pieces were removed. Match continues!`,
+    };
+
     broadcastToRoom(room, {
       type: 'GAME_STATE_UPDATE',
       payload: { state: room.state },
     });
 
-    if (hasValidMoves) {
-      // Auto move the best token after 800ms
-      setTimeout(() => {
-        if (room.state.status === 'playing' && room.state.mustSelectToken) {
-          const bestTokenId = selectBestBotMove(
-            room.state,
-            activePlayer,
-            room.state.validTokenMoves
-          );
-          executeRoomMove(room, bestTokenId);
-        }
-      }, 800);
-    } else {
-      checkBotTurn(room);
-    }
-  } else if (room.state.mustSelectToken && room.state.validTokenMoves.length > 0) {
-    // Auto move first or best valid token
-    const bestTokenId = selectBestBotMove(
-      room.state,
-      activePlayer,
-      room.state.validTokenMoves
-    );
-    executeRoomMove(room, bestTokenId);
+    checkBotTurn(room);
+  } else {
+    // 1st Miss (Strike 1) -> Pass turn to next player without auto-playing
+    const nextIdx = (room.state.activeColorIndex + 1) % room.state.activeColors.length;
+    const nextColor = room.state.activeColors[nextIdx];
+    const nextMisses = room.playerMisses[nextColor] || 0;
+    const nextTurnLimit = nextMisses === 1 ? 20 : (room.state.turnTimeLimit || 15);
+
+    room.state = {
+      ...room.state,
+      hasRolled: false,
+      canRoll: true,
+      validTokenMoves: [],
+      mustSelectToken: false,
+      consecutiveSixes: 0,
+      activeColorIndex: nextIdx,
+      turnTimeLimit: nextTurnLimit,
+      turnTimeRemaining: nextTurnLimit,
+      lastMoveDescription: `${activePlayer.name} timed out. Turn passed to next player.`,
+    };
+
+    broadcastToRoom(room, {
+      type: 'GAME_STATE_UPDATE',
+      payload: { state: room.state },
+    });
+
+    checkBotTurn(room);
   }
 }
 
@@ -268,22 +317,11 @@ async function startServer() {
 
   const onlineLobbyUsers = new Map<string, LobbyOnlineUser>();
 
-  // Seed online players
-  const SEED_PLAYERS: LobbyOnlineUser[] = [
-    { id: 'ply_kato', name: 'Kato Derrick', avatar: '👑', rating: 1420, status: 'available', country: 'UG', lastSeen: Date.now() },
-    { id: 'ply_namubiru', name: 'Sarah Namubiru', avatar: '⚡', rating: 1350, status: 'available', country: 'UG', lastSeen: Date.now() },
-    { id: 'ply_mukasa', name: 'Brian Mukasa', avatar: '🐉', rating: 1280, status: 'available', country: 'UG', lastSeen: Date.now() },
-    { id: 'ply_amina', name: 'Zainab Amina', avatar: '💎', rating: 1390, status: 'available', country: 'UG', lastSeen: Date.now() },
-    { id: 'ply_okello', name: 'John Okello', avatar: '🦁', rating: 1210, status: 'available', country: 'UG', lastSeen: Date.now() },
-    { id: 'ply_nabulime', name: 'Joy Nabulime', avatar: '🔥', rating: 1310, status: 'available', country: 'UG', lastSeen: Date.now() },
-  ];
-  SEED_PLAYERS.forEach((p) => onlineLobbyUsers.set(p.id, p));
-
   app.get('/api/lobby/players', (req, res) => {
     const now = Date.now();
-    // Clean stale users (older than 2 minutes, except seed users)
+    // Clean stale users (older than 45 seconds of no heartbeat)
     Array.from(onlineLobbyUsers.entries()).forEach(([id, user]) => {
-      if (!id.startsWith('ply_') && now - user.lastSeen > 120000) {
+      if (now - user.lastSeen > 45000) {
         onlineLobbyUsers.delete(id);
       }
     });
