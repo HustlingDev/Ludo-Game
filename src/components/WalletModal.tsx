@@ -9,12 +9,11 @@ import {
   X,
   CheckCircle2,
   Smartphone,
-  Check,
-  Zap,
   AlertCircle,
   Settings,
+  HelpCircle,
 } from 'lucide-react';
-import { ALLOWED_STAKES, GAME_ECONOMICS } from '../types/platform';
+import { GAME_ECONOMICS } from '../types/platform';
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -22,28 +21,31 @@ interface WalletModalProps {
   onOpenSettings?: () => void;
 }
 
+const DEPOSIT_PRESETS = [509, 1000, 2000, 5000, 10000, 20000];
+
 export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpenSettings }) => {
   const { user, wallet, userProfile, creditWallet, debitWallet } = useAuth();
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
-  const [selectedAmount, setSelectedAmount] = useState<number>(5000);
+  const [selectedAmount, setSelectedAmount] = useState<number>(509);
   const [customAmount, setCustomAmount] = useState<string>('');
-  const [phoneNumber, setPhoneNumber] = useState(userProfile?.phone || '0772123456');
-  const [selectedProvider, setSelectedProvider] = useState<'auto' | 'mtn' | 'airtel'>('auto');
   const [loading, setLoading] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState<string>('1000');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [pendingPromptPhone, setPendingPromptPhone] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const currentAmount = customAmount ? parseInt(customAmount, 10) : selectedAmount;
   const availableBal = wallet?.availableBalance || 0;
+  const registeredPhone = userProfile?.phone || '';
 
   // Deposit handler
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setPendingPromptPhone(null);
     setLoading(true);
 
     try {
@@ -51,15 +53,16 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
         throw new Error(`Minimum deposit is UGX ${GAME_ECONOMICS.minDepositUGX.toLocaleString()}`);
       }
 
-      const cleanPhone = (phoneNumber || userProfile?.phone || '').trim();
-      if (!cleanPhone || cleanPhone.length < 9) {
-        throw new Error('Please enter a valid Uganda Mobile Money phone number.');
+      if (!registeredPhone || registeredPhone.trim().length < 9) {
+        throw new Error(
+          'Please set your registered Mobile Money phone number in Game Settings first.'
+        );
       }
 
-      let depositSuccess = false;
       let referenceCode = `DEP-${Date.now().toString(36).toUpperCase()}`;
+      let promptSent = false;
 
-      // Try calling server API endpoint
+      // Call backend PesaJet collection endpoint
       try {
         const res = await fetch('/api/pesajet/collection', {
           method: 'POST',
@@ -68,55 +71,29 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
             amount: currentAmount,
             currency: 'UGX',
             userId: userProfile?.id || user?.uid || 'player',
-            phone: cleanPhone,
-            phoneNumber: cleanPhone,
-            provider: selectedProvider === 'auto' ? undefined : selectedProvider,
+            phone: registeredPhone,
+            phoneNumber: registeredPhone,
             description: `Ludo Arena Deposit UGX ${currentAmount.toLocaleString()}`,
           }),
         });
 
         const data = await res.json().catch(() => null);
         if (res.ok && data?.success) {
-          depositSuccess = true;
+          promptSent = true;
           if (data.reference) referenceCode = data.reference;
+        } else if (data?.error) {
+          console.warn('Backend deposit gateway message:', data.error);
         }
       } catch (networkErr) {
         console.warn('Backend deposit endpoint notice:', networkErr);
       }
 
-      // Automatically credit the user's active wallet
-      await creditWallet(
-        currentAmount,
-        `Mobile Money Deposit (${cleanPhone})`,
-        referenceCode
-      );
-
+      setPendingPromptPhone(registeredPhone);
       setSuccess(
-        `UGX ${currentAmount.toLocaleString()} successfully credited to your Ludo Arena Wallet! (Ref: ${referenceCode})`
+        `Mobile Money deposit request for UGX ${currentAmount.toLocaleString()} initiated! (Ref: ${referenceCode})`
       );
     } catch (err: any) {
       setError(err.message || 'Deposit processing failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Instant 1-tap deposit
-  const handleInstantCredit = async () => {
-    setError(null);
-    setSuccess(null);
-    setLoading(true);
-    try {
-      if (!currentAmount || currentAmount < GAME_ECONOMICS.minDepositUGX) {
-        throw new Error(`Minimum deposit is UGX ${GAME_ECONOMICS.minDepositUGX.toLocaleString()}`);
-      }
-
-      const cleanPhone = (phoneNumber || userProfile?.phone || '0772123456').trim();
-      const ref = `INST-${Date.now().toString(36).toUpperCase()}`;
-      await creditWallet(currentAmount, `Instant Deposit (${cleanPhone})`, ref);
-      setSuccess(`Successfully added UGX ${currentAmount.toLocaleString()} to your balance! (Ref: ${ref})`);
-    } catch (err: any) {
-      setError(err.message || 'Failed to credit wallet');
     } finally {
       setLoading(false);
     }
@@ -127,6 +104,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setPendingPromptPhone(null);
     setLoading(true);
 
     try {
@@ -136,12 +114,15 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
       }
 
       if (numWithdraw > availableBal) {
-        throw new Error(`Insufficient funds. Your available balance is UGX ${availableBal.toLocaleString()}.`);
+        throw new Error(
+          `Insufficient funds. Your available balance is UGX ${availableBal.toLocaleString()}.`
+        );
       }
 
-      const recipientPhone = (userProfile?.phone || phoneNumber || '').trim();
-      if (!recipientPhone || recipientPhone.length < 9) {
-        throw new Error('Please ensure your recipient phone number is set in your profile.');
+      if (!registeredPhone || registeredPhone.trim().length < 9) {
+        throw new Error(
+          'Please set your registered Mobile Money recipient number in Game Settings first.'
+        );
       }
 
       // Try server disbursement endpoint
@@ -152,7 +133,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             amount: numWithdraw,
-            phone: recipientPhone,
+            phone: registeredPhone,
             userId: userProfile?.id || user?.uid || 'player',
           }),
         });
@@ -163,10 +144,10 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
       }
 
       // Debit user wallet
-      await debitWallet(numWithdraw, `Mobile Money Payout to ${recipientPhone}`);
+      await debitWallet(numWithdraw, `Mobile Money Payout to ${registeredPhone}`);
 
       setSuccess(
-        `Withdrawal of UGX ${numWithdraw.toLocaleString()} sent to ${recipientPhone}! (Ref: ${disburseRef})`
+        `Withdrawal of UGX ${numWithdraw.toLocaleString()} processed for ${registeredPhone}! (Ref: ${disburseRef})`
       );
     } catch (err: any) {
       setError(err.message || 'Withdrawal failed');
@@ -196,7 +177,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
           </div>
         </div>
 
-        {/* Balance Card (Clean, showing Available balance only) */}
+        {/* Balance Card */}
         <div className="bg-gradient-to-br from-slate-800 to-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-700/80 mb-5 shadow-inner">
           <div className="flex justify-between items-center mb-1.5">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -211,13 +192,14 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
           </div>
         </div>
 
-        {/* Deposit / Withdraw Tabs (Overview removed) */}
+        {/* Deposit / Withdraw Tabs */}
         <div className="grid grid-cols-2 gap-1.5 bg-slate-800 p-1 rounded-2xl mb-5 text-xs font-bold">
           <button
             onClick={() => {
               setActiveTab('deposit');
               setError(null);
               setSuccess(null);
+              setPendingPromptPhone(null);
             }}
             className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 ${
               activeTab === 'deposit'
@@ -232,6 +214,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
               setActiveTab('withdraw');
               setError(null);
               setSuccess(null);
+              setPendingPromptPhone(null);
             }}
             className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 ${
               activeTab === 'withdraw'
@@ -251,7 +234,21 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
           </div>
         )}
 
-        {success && (
+        {pendingPromptPhone && (
+          <div className="bg-amber-500/20 border border-amber-500/50 rounded-2xl p-3.5 text-xs text-amber-200 mb-4 space-y-1.5">
+            <div className="flex items-center gap-2 font-bold text-amber-300">
+              <Smartphone className="w-4 h-4 text-amber-400 animate-bounce" />
+              <span>Approval Prompt Sent to Phone</span>
+            </div>
+            <p className="text-[11px] text-amber-100/90 leading-relaxed">
+              A USSD confirmation prompt has been dispatched to{' '}
+              <span className="font-mono font-bold text-white">{pendingPromptPhone}</span>.
+              Please check your phone screen and enter your Mobile Money PIN to authorize the transaction.
+            </p>
+          </div>
+        )}
+
+        {success && !pendingPromptPhone && (
           <div className="bg-emerald-500/20 border border-emerald-500/50 rounded-2xl p-3 text-xs text-emerald-300 mb-4 flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <span>{success}</span>
@@ -263,10 +260,10 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
           <form onSubmit={handleDeposit} className="space-y-4">
             <div>
               <label className="block text-xs font-black text-slate-300 mb-2">
-                Select Deposit Amount
+                Select Deposit Amount (Begins from UGX 509)
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {ALLOWED_STAKES.map((stake) => (
+                {DEPOSIT_PRESETS.map((stake) => (
                   <button
                     key={stake}
                     type="button"
@@ -274,7 +271,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
                       setSelectedAmount(stake);
                       setCustomAmount('');
                     }}
-                    className={`py-2 px-2 rounded-xl border text-xs font-bold transition ${
+                    className={`py-2.5 px-2 rounded-xl border text-xs font-bold transition ${
                       selectedAmount === stake && !customAmount
                         ? 'bg-emerald-600 border-emerald-400 text-white shadow-md'
                         : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-750'
@@ -289,7 +286,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
             {/* Custom Amount */}
             <div>
               <label className="block text-xs font-semibold text-slate-400 mb-1">
-                Or Custom Amount (UGX)
+                Or Custom Amount (min UGX 509)
               </label>
               <input
                 type="number"
@@ -298,51 +295,68 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
                   setCustomAmount(e.target.value);
                   if (e.target.value) setSelectedAmount(0);
                 }}
-                placeholder="Enter custom UGX amount (min 200)"
-                min={200}
-                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
+                placeholder="Enter custom UGX amount (min 509)"
+                min={509}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
               />
             </div>
 
-            {/* Phone Number */}
+            {/* Registered Phone Number Pill (No manual input, change from settings) */}
             <div>
-              <label className="block text-xs font-black text-slate-300 mb-1">
-                Mobile Money Phone Number
-              </label>
-              <div className="relative">
-                <input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="0772123456 or +256..."
-                  required
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
-                />
-                <Smartphone className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-black text-slate-300">
+                  Registered Mobile Money Number
+                </label>
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenSettings();
+                    }}
+                    className="text-[11px] text-amber-400 hover:underline font-bold flex items-center gap-1"
+                  >
+                    <Settings className="w-3 h-3" />
+                    <span>Change in Settings</span>
+                  </button>
+                )}
               </div>
+
+              {registeredPhone ? (
+                <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-950/90 border border-slate-800 rounded-xl text-xs font-mono text-emerald-400">
+                  <span className="font-bold">{registeredPhone}</span>
+                  <span className="text-[10px] text-slate-400 font-sans">Verified Profile Number</span>
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-center justify-between">
+                  <span>No mobile number in profile</span>
+                  {onOpenSettings && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenSettings();
+                      }}
+                      className="px-2.5 py-1 bg-amber-500 text-slate-950 font-bold rounded-lg text-[11px]"
+                    >
+                      Add in Settings
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Deposit Action Buttons */}
-            <div className="flex flex-col gap-2 pt-1">
+            {/* Deposit Action Button */}
+            <div className="pt-1">
               <button
                 type="submit"
-                disabled={loading || !currentAmount || currentAmount < 200}
+                disabled={loading || !currentAmount || currentAmount < 509 || !registeredPhone}
                 className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 font-black rounded-2xl transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 text-xs sm:text-sm text-white"
               >
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
                 {loading
-                  ? 'Processing Deposit...'
-                  : `Deposit UGX ${currentAmount.toLocaleString()} via Mobile Money`}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleInstantCredit}
-                disabled={loading || !currentAmount}
-                className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-amber-300 font-bold rounded-2xl transition text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <span>Instant 1-Tap Deposit (UGX {currentAmount.toLocaleString()})</span>
+                  ? 'Initiating Prompt...'
+                  : `Deposit UGX ${currentAmount ? currentAmount.toLocaleString() : '509'} via Mobile Money`}
               </button>
             </div>
           </form>
@@ -390,7 +404,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
 
             {/* Recipient Phone Number (Auto-set, changeable from Settings) */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-black text-slate-300">
                   Recipient Mobile Money Number
                 </label>
@@ -408,18 +422,29 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
                   </button>
                 )}
               </div>
-              <div className="relative">
-                <input
-                  type="tel"
-                  value={userProfile?.phone || phoneNumber}
-                  readOnly
-                  className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 cursor-not-allowed"
-                />
-                <Smartphone className="w-4 h-4 text-emerald-400 absolute right-3 top-1/2 -translate-y-1/2" />
-              </div>
-              <p className="text-[10px] text-slate-400 mt-1">
-                Payouts are sent automatically to this verified number. To change it, update your number in Game Settings.
-              </p>
+
+              {registeredPhone ? (
+                <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-950/90 border border-slate-800 rounded-xl text-xs font-mono text-emerald-400">
+                  <span className="font-bold">{registeredPhone}</span>
+                  <span className="text-[10px] text-slate-400 font-sans">Payout Destination</span>
+                </div>
+              ) : (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300 flex items-center justify-between">
+                  <span>No mobile number set for payout</span>
+                  {onOpenSettings && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenSettings();
+                      }}
+                      className="px-2.5 py-1 bg-rose-600 text-white font-bold rounded-lg text-[11px]"
+                    >
+                      Set in Settings
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Summary */}
@@ -437,7 +462,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
             {/* Withdraw Button */}
             <button
               type="submit"
-              disabled={loading || availableBal < 1000 || parseInt(withdrawAmount, 10) < 1000}
+              disabled={loading || availableBal < 1000 || parseInt(withdrawAmount, 10) < 1000 || !registeredPhone}
               className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:brightness-110 active:scale-95 font-black rounded-2xl transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 text-xs sm:text-sm text-white"
             >
               {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowUpRight className="w-4 h-4" />}

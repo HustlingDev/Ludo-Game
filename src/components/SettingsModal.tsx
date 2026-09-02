@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserSettings, BoardTheme } from '../types';
 import {
   X,
@@ -7,12 +7,13 @@ import {
   VolumeX,
   Music,
   Palette,
-  ShieldCheck,
   Eye,
   Zap,
-  RotateCcw,
+  Smartphone,
+  Check,
 } from 'lucide-react';
 import { sounds } from '../utils/audio';
+import { useAuth } from '../context/AuthContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -27,7 +28,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdateSettings,
 }) => {
+  const { userProfile, updateUserProfile } = useAuth();
+  const [phoneNumber, setPhoneNumber] = useState(userProfile?.phone || '');
+  const [phoneSaved, setPhoneSaved] = useState(false);
+  const [phoneSaving, setPhoneSaving] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleSavePhone = async () => {
+    if (!phoneNumber.trim()) return;
+    setPhoneSaving(true);
+    try {
+      await updateUserProfile({ phone: phoneNumber.trim() });
+      setPhoneSaved(true);
+      setTimeout(() => setPhoneSaved(false), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPhoneSaving(false);
+    }
+  };
 
   const updateSection = <K extends keyof UserSettings>(
     section: K,
@@ -343,81 +363,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Privacy & Social */}
+          {/* Section 4: Registered Mobile Money Account */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-indigo-400 font-bold uppercase text-[11px] tracking-wider">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Privacy & Social</span>
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Registered Mobile Money Number</span>
             </div>
 
             <div className="space-y-2.5 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-white text-xs">Show Online Status</div>
-                  <div className="text-[10px] text-slate-400">Let friends see when you are active</div>
+              <div>
+                <div className="font-bold text-white text-xs">Uganda Mobile Money Number</div>
+                <div className="text-[10px] text-slate-400">
+                  Used for deposits & withdrawals (MTN / Airtel Uganda)
                 </div>
-                <button
-                  onClick={() => {
-                    sounds.playButton();
-                    updateSection('privacy', { onlineStatus: !settings.privacy.onlineStatus });
-                  }}
-                  className={`w-11 h-6 rounded-full transition-colors relative ${
-                    settings.privacy.onlineStatus ? 'bg-indigo-500' : 'bg-slate-800'
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
-                      settings.privacy.onlineStatus ? 'right-1' : 'left-1'
-                    }`}
-                  />
-                </button>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
-                <div>
-                  <div className="font-bold text-white text-xs">Allow Friend Requests</div>
-                  <div className="text-[10px] text-slate-400">Receive requests from other players</div>
-                </div>
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="e.g. 0770000000 or +256..."
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+                />
                 <button
-                  onClick={() => {
-                    sounds.playButton();
-                    updateSection('privacy', {
-                      allowFriendRequests: !settings.privacy.allowFriendRequests,
-                    });
-                  }}
-                  className={`w-11 h-6 rounded-full transition-colors relative ${
-                    settings.privacy.allowFriendRequests ? 'bg-indigo-500' : 'bg-slate-800'
-                  }`}
+                  onClick={handleSavePhone}
+                  disabled={phoneSaving || !phoneNumber.trim()}
+                  className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 transition"
                 >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
-                      settings.privacy.allowFriendRequests ? 'right-1' : 'left-1'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
-                <div>
-                  <div className="font-bold text-white text-xs">Allow Game Invitations</div>
-                  <div className="text-[10px] text-slate-400">Receive direct match invitations</div>
-                </div>
-                <button
-                  onClick={() => {
-                    sounds.playButton();
-                    updateSection('privacy', {
-                      allowGameInvites: !settings.privacy.allowGameInvites,
-                    });
-                  }}
-                  className={`w-11 h-6 rounded-full transition-colors relative ${
-                    settings.privacy.allowGameInvites ? 'bg-indigo-500' : 'bg-slate-800'
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${
-                      settings.privacy.allowGameInvites ? 'right-1' : 'left-1'
-                    }`}
-                  />
+                  {phoneSaved ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-300" />
+                      <span>Saved</span>
+                    </>
+                  ) : phoneSaving ? (
+                    <span>Saving...</span>
+                  ) : (
+                    <span>Update</span>
+                  )}
                 </button>
               </div>
             </div>

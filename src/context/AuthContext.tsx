@@ -136,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } else {
               const initialWallet: WalletDoc = {
                 userId: currentUser.uid,
-                availableBalance: 2000, // Welcome bonus UGX 2,000 to test matches
+                availableBalance: 200, // Welcome bonus UGX 200 for new user
                 lockedBalance: 0,
                 currency: GAME_ECONOMICS.currency,
                 status: 'active',

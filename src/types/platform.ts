@@ -55,7 +55,7 @@ export const GAME_ECONOMICS: GameEconomicsConfig = {
   currency: 'UGX',
   allowedStakes: ALLOWED_STAKES,
   platformFeePercentage: 10,
-  minDepositUGX: 200,
+  minDepositUGX: 509,
   maxDepositUGX: 500000,
   minWithdrawalUGX: 1000,
   maxWithdrawalUGX: 500000,
