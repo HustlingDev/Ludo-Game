@@ -460,10 +460,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   };
 
   return (
-    <div className="w-full flex items-center justify-center p-1 sm:p-2">
+    <div className="w-full flex items-center justify-center p-0.5 sm:p-1.5">
       {/* 15x15 Board Grid Container */}
       <div
-        className={`relative w-full aspect-square max-w-[480px] sm:max-w-[520px] rounded-3xl p-1.5 sm:p-2 shadow-2xl grid grid-cols-15 grid-rows-15 border-4 select-none touch-manipulation ${getThemeBoardStyle()}`}
+        className={`relative w-full aspect-square max-w-[min(95vw,440px,48vh)] sm:max-w-[min(90vw,500px,58vh)] rounded-2xl sm:rounded-3xl p-1 sm:p-2 shadow-2xl grid grid-cols-15 grid-rows-15 border-2 sm:border-4 select-none touch-manipulation ${getThemeBoardStyle()}`}
       >
         {/* 4 Corner Yards */}
         {renderYardBase('red', 1, 1)}

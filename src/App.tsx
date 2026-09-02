@@ -179,8 +179,8 @@ export default function App() {
         onExitToLobby={handleExitToLobby}
       />
 
-      {/* Main Game Screen (Static & Zero-Scroll Layout) */}
-      <main className="flex-1 w-full max-w-7xl mx-auto p-1 sm:p-2.5 flex flex-col items-center justify-center overflow-hidden">
+      {/* Main Game Screen (Responsive Layout) */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-1 sm:p-2.5 flex flex-col items-center justify-center overflow-y-auto lg:overflow-hidden min-h-0">
         {/* CASE 1: Main Lobby */}
         {gameState.status === 'lobby' ? (
           <MainLobbyView
@@ -320,8 +320,8 @@ export default function App() {
             </div>
           </div>
         ) : (
-          /* CASE 3: Active Playing Arena (Static & Non-Scrolling) */
-          <div className="w-full h-full max-h-[calc(100vh-8.5rem)] flex flex-col lg:flex-row items-center justify-center gap-2 sm:gap-4 overflow-hidden">
+          /* CASE 3: Active Playing Arena (Responsive Screen) */
+          <div className="w-full flex flex-col lg:flex-row items-center justify-center gap-1.5 sm:gap-4 overflow-visible my-auto">
             {/* Left Player Column */}
             <div className="w-full lg:w-48 shrink-0 flex lg:flex-col gap-1.5 justify-between order-2 lg:order-1">
               {gameState.players.length === 2 ? (

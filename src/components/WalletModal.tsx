@@ -61,6 +61,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
 
       let referenceCode = `DEP-${Date.now().toString(36).toUpperCase()}`;
       let promptSent = false;
+      let promptMessage = '';
 
       // Call backend PesaJet collection endpoint
       try {
@@ -81,16 +82,21 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
         if (res.ok && data?.success) {
           promptSent = true;
           if (data.reference) referenceCode = data.reference;
+          promptMessage = data.message || '';
         } else if (data?.error) {
-          console.warn('Backend deposit gateway message:', data.error);
+          throw new Error(data.error);
         }
-      } catch (networkErr) {
+      } catch (networkErr: any) {
+        if (networkErr.message && !networkErr.message.includes('fetch')) {
+          throw networkErr;
+        }
         console.warn('Backend deposit endpoint notice:', networkErr);
       }
 
       setPendingPromptPhone(registeredPhone);
       setSuccess(
-        `Mobile Money deposit request for UGX ${currentAmount.toLocaleString()} initiated! (Ref: ${referenceCode})`
+        promptMessage ||
+          `Mobile Money deposit request for UGX ${currentAmount.toLocaleString()} initiated! (Ref: ${referenceCode})`
       );
     } catch (err: any) {
       setError(err.message || 'Deposit processing failed');
@@ -235,16 +241,20 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
         )}
 
         {pendingPromptPhone && (
-          <div className="bg-amber-500/20 border border-amber-500/50 rounded-2xl p-3.5 text-xs text-amber-200 mb-4 space-y-1.5">
+          <div className="bg-amber-500/20 border border-amber-500/50 rounded-2xl p-3.5 text-xs text-amber-200 mb-4 space-y-2">
             <div className="flex items-center gap-2 font-bold text-amber-300">
               <Smartphone className="w-4 h-4 text-amber-400 animate-bounce" />
-              <span>Approval Prompt Sent to Phone</span>
+              <span>Approval Prompt Dispatched</span>
             </div>
             <p className="text-[11px] text-amber-100/90 leading-relaxed">
-              A USSD confirmation prompt has been dispatched to{' '}
+              A USSD PIN authorization prompt was dispatched to{' '}
               <span className="font-mono font-bold text-white">{pendingPromptPhone}</span>.
-              Please check your phone screen and enter your Mobile Money PIN to authorize the transaction.
             </p>
+            <div className="bg-slate-950/70 p-2.5 rounded-xl border border-amber-500/30 text-[10px] space-y-1 text-slate-300">
+              <div className="font-bold text-amber-400 uppercase tracking-wider">Didn't see the automatic prompt?</div>
+              <div>• <strong>Airtel Uganda:</strong> Dial <span className="font-mono text-white font-bold">*185#</span> &gt; <strong>My Account</strong> &gt; <strong>Pending Approvals</strong> &gt; Enter PIN.</div>
+              <div>• <strong>MTN Uganda:</strong> Dial <span className="font-mono text-white font-bold">*165#</span> &gt; <strong>My Approvals</strong> &gt; Enter PIN.</div>
+            </div>
           </div>
         )}
 

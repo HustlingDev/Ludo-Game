@@ -27,6 +27,7 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
   creditWallet: (amount: number, description?: string, reference?: string) => Promise<void>;
   debitWallet: (amount: number, description?: string, reference?: string) => Promise<boolean>;
+  deleteAccountAndData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -345,6 +346,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  const deleteAccountAndData = async () => {
+    const currentUid = user?.uid || userProfile?.id;
+    const currentEmail = user?.email || userProfile?.email;
+
+    // Remove local storage
+    localStorage.removeItem(LOCAL_PROFILE_KEY);
+    localStorage.removeItem(LOCAL_WALLET_KEY);
+    localStorage.removeItem('ludo_player_profile');
+    localStorage.removeItem('ludo_active_match');
+    localStorage.removeItem('ludo_user_settings');
+    localStorage.removeItem('ludo_game_history');
+
+    // Notify backend to purge memory references
+    try {
+      await fetch('/api/user/delete-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUid, email: currentEmail }),
+      });
+    } catch (e) {
+      console.warn('Backend user delete notice:', e);
+    }
+
+    // Reset state
+    setUserProfile(null);
+    setWallet(null);
+
+    // Sign out of Firebase
+    try {
+      await fbSignOut(auth);
+    } catch {
+      // Ignore
+    }
+  };
+
   const signOut = async () => {
     localStorage.removeItem(LOCAL_PROFILE_KEY);
     localStorage.removeItem(LOCAL_WALLET_KEY);
@@ -388,6 +424,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshProfile,
         creditWallet,
         debitWallet,
+        deleteAccountAndData,
       }}
     >
       {children}

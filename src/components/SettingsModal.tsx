@@ -11,6 +11,8 @@ import {
   Zap,
   Smartphone,
   Check,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { sounds } from '../utils/audio';
 import { useAuth } from '../context/AuthContext';
@@ -28,10 +30,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdateSettings,
 }) => {
-  const { userProfile, updateUserProfile } = useAuth();
+  const { userProfile, updateUserProfile, deleteAccountAndData } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState(userProfile?.phone || '');
   const [phoneSaved, setPhoneSaved] = useState(false);
   const [phoneSaving, setPhoneSaving] = useState(false);
+  const [isDeletingData, setIsDeletingData] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   if (!isOpen) return null;
 
@@ -462,6 +466,73 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   />
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Section 6: Account & Data Privacy (Reset / Delete) */}
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center gap-2 text-rose-400 font-bold uppercase text-[11px] tracking-wider">
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Data Management & Privacy</span>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-900/50 space-y-3">
+              <div>
+                <div className="font-bold text-white text-xs">Delete My Account & Game Data</div>
+                <div className="text-[10px] text-slate-400 leading-relaxed">
+                  Permanently wipe all your saved match records, statistics, profile identifiers, and cached wallet records from the game.
+                </div>
+              </div>
+
+              {!deleteConfirm ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playButton();
+                    setDeleteConfirm(true);
+                  }}
+                  className="w-full py-2.5 px-3 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 hover:text-rose-200 border border-rose-500/40 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete & Reset All My Data</span>
+                </button>
+              ) : (
+                <div className="space-y-2 p-2.5 rounded-xl bg-slate-950/80 border border-rose-500/60">
+                  <div className="flex items-center gap-1.5 text-rose-400 text-xs font-bold">
+                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>Confirm Data Deletion?</span>
+                  </div>
+                  <p className="text-[10px] text-slate-300">
+                    This action will immediately erase all saved local states and log you out.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={isDeletingData}
+                      onClick={async () => {
+                        setIsDeletingData(true);
+                        try {
+                          await deleteAccountAndData();
+                          onClose();
+                        } finally {
+                          setIsDeletingData(false);
+                          setDeleteConfirm(false);
+                        }
+                      }}
+                      className="flex-1 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition shadow"
+                    >
+                      {isDeletingData ? 'Deleting...' : 'Yes, Delete Everything'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirm(false)}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
