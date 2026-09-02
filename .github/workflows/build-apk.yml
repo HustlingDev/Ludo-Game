@@ -18,66 +18,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up Java Development Kit (JDK 17)
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
 
-      - name: Set up Node.js
+      - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Build Web Application Assets
+      - name: Install Web Dependencies & Build Production Assets
         run: |
           npm ci || npm install
           npm run build
           mkdir -p android/app/src/main/assets/dist
           cp -r dist/* android/app/src/main/assets/dist/
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Android SDK Licenses & Install Components
+      - name: Grant Execute Permission to Gradle Wrapper
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          chmod +x ./android/gradlew || true
+          if [ -f "./gradlew" ]; then chmod +x ./gradlew; fi
 
-      - name: Set up Gradle
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.7'
 
-      - name: Build Debug APK
+      - name: Build Android APKs with Gradle Wrapper
         working-directory: android
         run: |
-          gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Build Release APK
-        working-directory: android
-        run: |
-          gradle assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ludo-king-apk
+          name: ludo-arena-apk
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/apk/release/*.apk
           retention-days: 14
 
-      - name: Publish to GitHub Releases
+      - name: Publish Release Assets to GitHub Releases
         if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: "Ludo King APK (Latest Build)"
+          name: "Ludo Arena APK (Latest Build)"
           body: "Download the latest compiled APK files for Android (`app-debug.apk` and `app-release.apk`)."
           draft: false
           prerelease: false
@@ -86,3 +78,4 @@ jobs:
             android/app/build/outputs/apk/release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

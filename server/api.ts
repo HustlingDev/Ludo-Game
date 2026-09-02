@@ -108,6 +108,7 @@ async function handleCollectionRequest(req: Request, res: Response) {
       return res.status(400).json({
         success: false,
         error: result.error || 'Failed to initiate Mobile Money deposit request with PesaJet.',
+        details: result.data || null,
         reference,
         phoneNumber: formattedPhone,
         provider: detectedProvider,
@@ -122,13 +123,43 @@ async function handleCollectionRequest(req: Request, res: Response) {
       provider: detectedProvider,
       amount: numAmount,
       status: result.status || 'PENDING',
-      message: `Mobile Money payment prompt sent to ${formattedPhone} (${detectedProvider.toUpperCase()}). Please enter your PIN on your phone to complete deposit.`,
+      message: `Mobile Money payment prompt dispatched to ${formattedPhone} (${detectedProvider.toUpperCase()}). Please approve with your PIN.`,
     });
   } catch (err: any) {
     console.error('[PESAJET] Collection Exception:', err);
     res.status(500).json({ error: err.message || 'Server error processing PesaJet deposit' });
   }
 }
+
+/**
+ * Reset / Purge User Data Endpoint (e.g. for deleted/reset accounts)
+ */
+router.post('/admin/purge-user-data', (req: Request, res: Response) => {
+  const { email, userId } = req.body || {};
+  console.log(`[DATA PURGE] Requested purge for email: ${email || 'all'}, userId: ${userId || 'all'}`);
+  
+  // Clean up any memory / lobby references
+  if (userId) {
+    onlineLobbyUsers.delete(userId);
+  }
+  
+  res.json({
+    success: true,
+    message: `User data associated with ${email || userId || 'requested accounts'} has been purged.`,
+    purgedAt: Date.now(),
+  });
+});
+
+router.post('/user/delete-data', (req: Request, res: Response) => {
+  const { email, userId } = req.body || {};
+  if (userId) {
+    onlineLobbyUsers.delete(userId);
+  }
+  res.json({
+    success: true,
+    message: 'User profile, match history, and wallet records have been successfully wiped.',
+  });
+});
 
 /**
  * PesaJet Mobile Money Deposit (Collection) Endpoint

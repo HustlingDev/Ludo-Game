@@ -21,8 +21,8 @@ export function getPesaJetConfig(): PesaJetConfig {
 }
 
 /**
-  * Formats Ugandan phone number to international E.164 standard (+256...)
-  */
+ * Formats Ugandan phone number to standard international formats
+ */
 export function formatUgandaPhone(phone: string): string {
   let cleaned = String(phone).replace(/[^0-9]/g, '');
   if (cleaned.startsWith('256') && cleaned.length >= 12) {
@@ -34,7 +34,11 @@ export function formatUgandaPhone(phone: string): string {
   if (cleaned.length === 9) {
     return `+256${cleaned}`;
   }
-  return `+${cleaned}`;
+  return cleaned ? `+256${cleaned.replace(/^0+/, '')}` : '+256700000000';
+}
+
+export function cleanUgandaPhoneWithoutPlus(phone: string): string {
+  return formatUgandaPhone(phone).replace(/^\+/, '');
 }
 
 /**
@@ -42,10 +46,10 @@ export function formatUgandaPhone(phone: string): string {
  */
 export function detectUgandaProvider(phone: string): 'mtn' | 'airtel' {
   const formatted = formatUgandaPhone(phone);
-  // Extract the 2-digit local prefix after +256 (e.g. 77, 78, 76, 70, 75, 74)
+  // Extract the 2-digit local prefix after +256 (e.g. 77, 78, 76, 70, 75, 74, 79)
   const localPrefix = formatted.replace('+256', '').substring(0, 2);
   const mtnPrefixes = ['77', '78', '76', '39', '31', '32'];
-  const airtelPrefixes = ['70', '75', '74', '20'];
+  const airtelPrefixes = ['70', '75', '74', '79', '20'];
 
   if (mtnPrefixes.includes(localPrefix)) {
     return 'mtn';
@@ -79,18 +83,23 @@ export interface PesaJetDisbursementParams {
  */
 export async function createPesaJetCollection(params: PesaJetCollectionParams) {
   const config = getPesaJetConfig();
-  const formattedPhone = formatUgandaPhone(params.phoneNumber);
-  const provider = params.provider || detectUgandaProvider(formattedPhone);
+  const formattedPhoneWithPlus = formatUgandaPhone(params.phoneNumber);
+  const formattedPhonePure = cleanUgandaPhoneWithoutPlus(params.phoneNumber);
+  const provider = (params.provider || detectUgandaProvider(formattedPhoneWithPlus)).toLowerCase() as 'mtn' | 'airtel';
   const idempotencyKey = params.idempotencyKey || `coll-${params.reference}-${Date.now()}`;
 
   const payload = {
     type: 'COLLECTION',
     amount: Math.round(params.amount),
     currency: 'UGX',
-    phoneNumber: formattedPhone,
-    provider,
+    phoneNumber: formattedPhoneWithPlus,
+    phone: formattedPhonePure,
+    msisdn: formattedPhonePure,
+    provider: provider,
+    network: provider.toUpperCase(),
     reference: params.reference,
     idempotencyKey,
+    description: params.description || `Ludo Arena Deposit UGX ${params.amount}`,
   };
 
   try {
@@ -99,6 +108,8 @@ export async function createPesaJetCollection(params: PesaJetCollectionParams) {
       headers: {
         'Content-Type': 'application/json',
         'X-API-Key': config.apiKey,
+        'Authorization': `Bearer ${config.apiSecret || config.apiKey}`,
+        'X-API-Secret': config.apiSecret,
       },
       body: JSON.stringify(payload),
     });
@@ -106,9 +117,10 @@ export async function createPesaJetCollection(params: PesaJetCollectionParams) {
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
+      console.warn('[PESAJET COLLECTION WARNING]', res.status, data);
       return {
         success: false,
-        error: data?.message || data?.error || `PesaJet API error (${res.status})`,
+        error: data?.message || data?.error || `PesaJet gateway returned status ${res.status}`,
         data,
       };
     }
@@ -120,9 +132,10 @@ export async function createPesaJetCollection(params: PesaJetCollectionParams) {
       data,
     };
   } catch (err: any) {
+    console.error('[PESAJET COLLECTION FETCH ERROR]', err);
     return {
       success: false,
-      error: err.message || 'Failed to reach PesaJet API',
+      error: err.message || 'Failed to reach PesaJet API gateway',
     };
   }
 }
