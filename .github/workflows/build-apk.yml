@@ -28,15 +28,14 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js (LTS)
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '22'
 
       - name: Install Web Dependencies & Build Production Assets
         run: |
-          npm ci || npm install
+          npm install --no-audit --no-fund
           npm run build
           mkdir -p android/app/src/main/assets/dist
           cp -r dist/* android/app/src/main/assets/dist/
