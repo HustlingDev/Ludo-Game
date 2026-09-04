@@ -47,11 +47,13 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
 
       - name: Build Android APKs with Gradle Wrapper
         working-directory: android
         run: |
-          ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace || gradle assembleDebug assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
