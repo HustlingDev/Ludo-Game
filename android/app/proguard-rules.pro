@@ -18,3 +18,7 @@
 # Keep Firebase classes
 -keep class com.google.firebase.** { *; }
 -dontwarn com.google.firebase.**
+
+# Keep Google Play Services Auth
+-keep class com.google.android.gms.auth.** { *; }
+-dontwarn com.google.android.gms.auth.**

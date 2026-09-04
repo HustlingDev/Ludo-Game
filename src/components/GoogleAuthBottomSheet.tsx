@@ -423,22 +423,34 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                       d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.25 2.63 1.26 6.61l4.01 3.15c.95-2.85 3.6-4.96 6.73-4.96z"
                     />
                   </svg>
-                  <span>{isSubmitting ? 'Connecting Google...' : 'Sign in with Google'}</span>
+                  <span>
+                    {isSubmitting
+                      ? 'Opening Google Accounts...'
+                      : (typeof (window as any).AndroidApp?.signInWithGoogle === 'function'
+                          ? 'Select Google Account from Device'
+                          : 'Sign in with Google')}
+                  </span>
                 </button>
 
-                {/* Secondary Redirect Mode Button for Mobile */}
-                <button
-                  type="button"
-                  onClick={handleGoogleSignInRedirectClick}
-                  disabled={isSubmitting}
-                  className="w-full py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-700 transition"
-                >
-                  <Smartphone className="w-3.5 h-3.5 text-sky-400" />
-                  <span>Mobile Redirect Sign In (Alternative)</span>
-                </button>
+                {/* Android Native Account Picker Info or Web Redirect */}
+                {typeof (window as any).AndroidApp?.signInWithGoogle === 'function' ? (
+                  <p className="text-[11px] text-center text-emerald-400 font-medium bg-emerald-950/40 p-2 rounded-xl border border-emerald-800/40">
+                    Your phone's Google Accounts list will open. Choose any of your accounts to sign in instantly.
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignInRedirectClick}
+                    disabled={isSubmitting}
+                    className="w-full py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-700 transition"
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Mobile Redirect Sign In (Alternative)</span>
+                  </button>
+                )}
 
                 <p className="text-[11px] text-center text-slate-500">
-                  By clicking Sign in with Google, you agree to our 18+ policy and terms.
+                  By signing in, you agree to our 18+ policy and skill gaming terms.
                 </p>
               </div>
             ) : (

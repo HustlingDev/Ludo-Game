@@ -6,6 +6,7 @@ import {
   signInWithRedirect,
   getRedirectResult,
   GoogleAuthProvider,
+  signInWithCredential,
   signOut as fbSignOut,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, updateDoc, collection } from 'firebase/firestore';
@@ -178,6 +179,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInGoogle = async () => {
     setLoading(true);
     try {
+      // 1. Check if running inside our Android native app with device account picker
+      const androidApp = (window as any).AndroidApp;
+      if (androidApp && typeof androidApp.signInWithGoogle === 'function') {
+        await new Promise<void>((resolve, reject) => {
+          let resolved = false;
+
+          (window as any).onNativeGoogleSignInSuccess = async (data: any) => {
+            if (resolved) return;
+            resolved = true;
+            try {
+              const idToken = typeof data === 'string' ? data : data?.idToken;
+              if (!idToken) {
+                throw new Error('No Google ID token received from device.');
+              }
+              const credential = GoogleAuthProvider.credential(idToken);
+              const userCred = await signInWithCredential(auth, credential);
+              if (userCred.user) {
+                setUser(userCred.user);
+              }
+              resolve();
+            } catch (err: any) {
+              console.error('Firebase signInWithCredential error:', err);
+              reject(err);
+            }
+          };
+
+          (window as any).onNativeGoogleSignInError = (errMsg: string) => {
+            if (resolved) return;
+            resolved = true;
+            console.error('Native Google Sign-In error:', errMsg);
+            reject(new Error(errMsg || 'Google account selection failed.'));
+          };
+
+          try {
+            androidApp.signInWithGoogle();
+          } catch (launchErr: any) {
+            resolved = true;
+            console.error('Failed to trigger AndroidApp.signInWithGoogle:', launchErr);
+            reject(launchErr);
+          }
+        });
+        return;
+      }
+
+      // 2. Standard Web fallback (PC, iOS Safari, etc.)
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
@@ -189,7 +235,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(result.user);
       }
     } catch (err: any) {
-      console.error('Firebase Google sign-in popup error:', err);
+      console.error('Firebase Google sign-in error:', err);
       throw err;
     } finally {
       setLoading(false);
@@ -199,6 +245,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInGoogleRedirect = async () => {
     setLoading(true);
     try {
+      const androidApp = (window as any).AndroidApp;
+      if (androidApp && typeof androidApp.signInWithGoogle === 'function') {
+        await signInGoogle();
+        return;
+      }
+
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
@@ -388,6 +440,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setWallet(null);
     try {
       await fbSignOut(auth);
+    } catch {
+      // Ignore
+    }
+    try {
+      (window as any).AndroidApp?.signOut?.();
     } catch {
       // Ignore
     }
