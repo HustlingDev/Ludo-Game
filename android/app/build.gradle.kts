@@ -20,16 +20,18 @@ android {
         }
     }
 
-    signingConfigs {
-        getByName("debug") {
-            // Pre-configured Android debug keystore
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            val debugKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            if (debugKeystore.exists()) {
+                signingConfig = signingConfigs.create("releaseDebugKey") {
+                    storeFile = debugKeystore
+                    storePassword = "android"
+                    keyAlias = "androiddebugkey"
+                    keyPassword = "android"
+                }
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -37,7 +39,6 @@ android {
         }
         debug {
             isDebuggable = true
-            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

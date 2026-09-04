@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
+        if (::webView.isInitialized && webView.canGoBack()) {
             webView.goBack()
         } else {
             super.onBackPressed()

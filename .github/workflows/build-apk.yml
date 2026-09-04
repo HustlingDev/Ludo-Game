@@ -43,6 +43,14 @@ jobs:
           npm run build
           mkdir -p android/app/src/main/assets/dist
           cp -r dist/* android/app/src/main/assets/dist/
+          rm -f android/app/src/main/assets/dist/server.cjs*
+
+      - name: Prepare Android Keystore
+        run: |
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
 
       - name: Grant Execute Permission to Gradle Wrapper
         run: |
@@ -57,8 +65,7 @@ jobs:
       - name: Build Android APKs with Gradle Wrapper
         working-directory: android
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleDebug assembleRelease --no-daemon
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
