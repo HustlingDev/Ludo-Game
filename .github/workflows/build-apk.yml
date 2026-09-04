@@ -26,7 +26,11 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
+
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          yes | sdkmanager --licenses || true
 
       - name: Set up Node.js (LTS)
         uses: actions/setup-node@v4
@@ -53,7 +57,8 @@ jobs:
       - name: Build Android APKs with Gradle Wrapper
         working-directory: android
         run: |
-          ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace || gradle assembleDebug assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4

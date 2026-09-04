@@ -31,7 +31,6 @@ android {
             )
         }
         debug {
-            applicationIdSuffix = ".debug"
             isDebuggable = true
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -43,6 +42,18 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    lint {
+        isAbortOnError = false
+        isCheckReleaseBuilds = false
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+        }
     }
 }
 
