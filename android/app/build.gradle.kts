@@ -22,7 +22,13 @@ android {
 
     signingConfigs {
         getByName("debug") {
-            // Default Android debug keystore
+            val projectKeystore = file("debug.keystore")
+            if (projectKeystore.exists()) {
+                storeFile = projectKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
     }
 
@@ -37,6 +43,7 @@ android {
         }
         debug {
             isDebuggable = true
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

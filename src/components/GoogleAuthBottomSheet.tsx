@@ -12,6 +12,8 @@ import {
   LogOut,
   Zap,
   Trophy,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { TermsOfServiceModal } from './TermsOfServiceModal';
@@ -48,6 +50,29 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
   const [authError, setAuthError] = useState<string>('');
   const [showDomainHelp, setShowDomainHelp] = useState<boolean>(false);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, label: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      setCopiedKey(label);
+      setTimeout(() => setCopiedKey(null), 2500);
+    } catch (e) {
+      console.error('Failed to copy', e);
+    }
+  };
 
   // Initialize form values from user & profile
   useEffect(() => {
@@ -296,19 +321,77 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                     </div>
 
                     {showDomainHelp && (
-                      <div className="pt-2 border-t border-rose-900/60 space-y-2 text-[11px] text-slate-200">
-                        <p className="font-bold text-amber-300">Quick 3-Point Checklist:</p>
-                        <ol className="list-decimal pl-4 space-y-1 text-slate-300">
-                          <li>
-                            Make sure you added <span className="font-mono text-amber-300 bg-black/40 px-1 py-0.5 rounded">ludo-arena-theta.vercel.app</span> AND <span className="font-mono text-amber-300 bg-black/40 px-1 py-0.5 rounded">vercel.app</span> (no <span className="text-rose-300">https://</span> or slashes).
-                          </li>
-                          <li>
-                            Confirm it is in Firebase Project ID <span className="font-mono text-amber-300 bg-black/40 px-1 py-0.5 rounded">gen-lang-client-0663840253</span>.
-                          </li>
-                          <li>
-                            Google's auth propagation takes 3–5 minutes after saving.
-                          </li>
-                        </ol>
+                      <div className="pt-2.5 border-t border-rose-900/60 space-y-2.5 text-[11px] text-slate-200">
+                        <p className="font-bold text-amber-300 flex items-center gap-1.5">
+                          <span>Required Firebase Configuration:</span>
+                        </p>
+
+                        <div className="space-y-2 bg-black/40 p-2.5 rounded-xl border border-slate-800">
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Step 1: Add Authorized Domain</span>
+                            <div className="flex items-center justify-between gap-2 mt-1 bg-slate-900/90 p-1.5 rounded-lg border border-slate-700">
+                              <span className="font-mono text-amber-300 text-xs truncate">appassets.androidplatform.net</span>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard('appassets.androidplatform.net', 'domain')}
+                                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center gap-1 shrink-0"
+                              >
+                                {copiedKey === 'domain' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                <span>{copiedKey === 'domain' ? 'Copied' : 'Copy'}</span>
+                              </button>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              Firebase Console &gt; Project <strong className="text-slate-200">ludo-9aaec</strong> &gt; Authentication &gt; Settings &gt; Authorized domains.
+                            </p>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-800/80">
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Step 2: Add SHA Fingerprints for In-App Sign-In</span>
+                            <p className="text-[10px] text-slate-400 mb-1.5">
+                              Firebase Console &gt; Project settings &gt; Your apps &gt; <strong className="text-slate-200">com.gamers.ludo</strong> &gt; Add fingerprint:
+                            </p>
+                            
+                            {/* SHA-1 */}
+                            <div className="mb-1.5">
+                              <span className="text-[10px] text-sky-400 font-semibold">SHA-1:</span>
+                              <div className="flex items-center justify-between gap-2 mt-0.5 bg-slate-900/90 p-1.5 rounded-lg border border-slate-700">
+                                <span className="font-mono text-[10px] text-slate-200 break-all select-all">
+                                  90:F7:30:62:52:CC:8D:BF:C5:9C:CF:E7:6D:5C:C4:E0:6A:14:AC:25
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard('90:F7:30:62:52:CC:8D:BF:C5:9C:CF:E7:6D:5C:C4:E0:6A:14:AC:25', 'sha1')}
+                                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center gap-1 shrink-0"
+                                >
+                                  {copiedKey === 'sha1' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                  <span>{copiedKey === 'sha1' ? 'Copied' : 'Copy'}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* SHA-256 */}
+                            <div>
+                              <span className="text-[10px] text-emerald-400 font-semibold">SHA-256:</span>
+                              <div className="flex items-center justify-between gap-2 mt-0.5 bg-slate-900/90 p-1.5 rounded-lg border border-slate-700">
+                                <span className="font-mono text-[10px] text-slate-200 break-all select-all">
+                                  86:D4:F7:45:E7:0D:D5:B5:8F:AB:7A:62:C0:BA:63:4A:3B:7A:1C:66:B2:FF:B5:04:08:9E:51:AA:B6:CF:5F:BC
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard('86:D4:F7:45:E7:0D:D5:B5:8F:AB:7A:62:C0:BA:63:4A:3B:7A:1C:66:B2:FF:B5:04:08:9E:51:AA:B6:CF:5F:BC', 'sha256')}
+                                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center gap-1 shrink-0"
+                                >
+                                  {copiedKey === 'sha256' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                  <span>{copiedKey === 'sha256' ? 'Copied' : 'Copy'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-amber-300/90 italic">
+                          * Changes in Google & Firebase Auth settings propagate globally in 3–5 minutes.
+                        </p>
                       </div>
                     )}
                   </div>
