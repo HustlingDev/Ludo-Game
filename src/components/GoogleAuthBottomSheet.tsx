@@ -145,10 +145,14 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
         msg.includes('SHA-1') ||
         msg.includes('DEVELOPER_ERROR')
       ) {
-        setAuthError(
-          'Android Google Sign-In error (code 10): Google provider configuration or updated google-services.json required.'
-        );
-        setShowCode10Help(true);
+        // Automatic transparent recovery if native Play Services returned code 10
+        try {
+          await signInGoogleWeb();
+          return;
+        } catch (fallbackErr: any) {
+          console.error('Google fallback error:', fallbackErr);
+          setAuthError(fallbackErr?.message || 'Please sign in with Google to continue.');
+        }
       } else if (err?.code === 'auth/unauthorized-domain' || msg.includes('auth/unauthorized-domain')) {
         setAuthError(
           `Domain "${window.location.hostname}" is not recognized yet by Firebase Auth.`
@@ -267,7 +271,7 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                 </h2>
                 <p className="text-xs text-slate-400">
                   {!user
-                    ? 'Official sign up for Ludo Arena'
+                    ? 'Official sign up for Ludo Royale'
                     : 'Set your avatar, lowercase username & phone'}
                 </p>
               </div>
@@ -450,17 +454,15 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                   </svg>
                   <span>
                     {isSubmitting
-                      ? 'Opening Google Accounts...'
-                      : (typeof (window as any).AndroidApp?.signInWithGoogle === 'function'
-                          ? 'Select Google Account from Device'
-                          : 'Sign in with Google')}
+                      ? 'Connecting to Google...'
+                      : 'Continue with Google'}
                   </span>
                 </button>
 
                 {/* Android Native Account Picker Info */}
                 {typeof (window as any).AndroidApp?.signInWithGoogle === 'function' && (
                   <p className="text-[11px] text-center text-emerald-400 font-medium bg-emerald-950/40 p-2 rounded-xl border border-emerald-800/40">
-                    Your phone's Google Accounts list will open. Choose any of your accounts to sign in instantly.
+                    Choose your Google account to sign in securely.
                   </p>
                 )}
 

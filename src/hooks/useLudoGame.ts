@@ -241,17 +241,13 @@ export function useLudoGame() {
       addToast({
         type: 'success',
         title: 'Connection Restored',
-        message: 'You are back online and connected to Ludo Arena!',
+        message: 'You are back online and connected to Ludo Royale!',
       });
     };
 
     const handleOffline = () => {
       setIsOnline(false);
-      addToast({
-        type: 'error',
-        title: 'No Internet Connection',
-        message: 'Connection lost. Please check your mobile data or Wi-Fi.',
-      });
+      // Single notification: the prominent status banner in App.tsx displays without duplicate toast
     };
 
     window.addEventListener('online', handleOnline);

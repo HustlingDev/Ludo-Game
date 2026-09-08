@@ -66,6 +66,18 @@ android {
             excludes += "META-INF/DEPENDENCIES"
         }
     }
+
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            output?.outputFileName = if (variant.buildType.name == "release") {
+                "Ludo_Royale_Release.apk"
+            } else {
+                "Ludo_Royale_Debug.apk"
+            }
+        }
+    }
 }
 
 dependencies {

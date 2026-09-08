@@ -142,11 +142,11 @@ export default function App() {
       {/* Toast notifications */}
       <ErrorToast toasts={toasts} onDismiss={dismissToast} />
 
-      {/* Offline / No Internet Warning Banner */}
+      {/* Offline / No Internet Warning Banner (Single clean notification) */}
       {!isOnline && (
         <div className="w-full bg-rose-600 text-white px-3 py-1.5 flex items-center justify-center gap-2 text-xs font-black shadow-lg animate-pulse shrink-0 z-50">
           <WifiOff className="w-4 h-4" />
-          <span>⚠️ No Internet Connection. Reconnecting to Ludo Arena...</span>
+          <span>⚠️ No Internet Connection. Reconnecting to Ludo Royale...</span>
         </div>
       )}
 
