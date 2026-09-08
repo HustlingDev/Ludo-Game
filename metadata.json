@@ -1,5 +1,5 @@
 {
-  "name": "Ludo Real-Time Multiplayer",
+  "name": "Ludo Royale",
   "description": "Real-time multiplayer Ludo board game featuring live room multiplayer, smart matchmaking, instant UGX payouts, and 200 UGX welcome bonus. Win real Cash.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

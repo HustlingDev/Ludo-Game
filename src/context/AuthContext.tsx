@@ -22,6 +22,7 @@ interface AuthContextType {
   isProfileComplete: boolean;
   signInGoogle: () => Promise<void>;
   signInGoogleRedirect: () => Promise<void>;
+  signInGoogleWeb: () => Promise<void>;
   updateUserProfile: (data: Partial<UserProfileDoc>) => Promise<void>;
   updatePhoneNumber: (phone: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -265,6 +266,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInGoogleWeb = async () => {
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('email');
+      provider.addScope('profile');
+      provider.setCustomParameters({
+        prompt: 'select_account',
+      });
+      try {
+        const result = await signInWithPopup(auth, provider);
+        if (result.user) {
+          setUser(result.user);
+        }
+      } catch (popupErr: any) {
+        if (
+          popupErr?.code === 'auth/popup-blocked' ||
+          popupErr?.code === 'auth/cancelled-popup-request' ||
+          popupErr?.code === 'auth/popup-closed-by-user'
+        ) {
+          await signInWithRedirect(auth, provider);
+        } else {
+          throw popupErr;
+        }
+      }
+    } catch (err: any) {
+      console.error('Firebase Google Web sign-in error:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateUserProfile = async (data: Partial<UserProfileDoc>) => {
     const activeUid = user?.uid || userProfile?.id;
     if (!activeUid) return;
@@ -475,6 +509,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isProfileComplete,
         signInGoogle,
         signInGoogleRedirect,
+        signInGoogleWeb,
         updateUserProfile,
         updatePhoneNumber,
         signOut,
