@@ -34,7 +34,6 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
     userProfile,
     signInGoogle,
     signInGoogleRedirect,
-    signInGoogleWeb,
     updateUserProfile,
     signOut,
     isProfileComplete,
@@ -160,29 +159,9 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
       } else if (err?.code === 'auth/cancelled-popup-request') {
         setAuthError('Sign in request was cancelled. Tap again.');
       } else if (err?.code === 'auth/popup-blocked') {
-        setAuthError('Popup was blocked by your browser. Use Web Google sign-in below.');
+        setAuthError('Popup was blocked by your browser. Please allow popups to continue.');
       } else {
         setAuthError(err?.message || 'Could not complete Google sign-in.');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleWebGoogleSignInClick = async () => {
-    setAuthError('');
-    setShowDomainHelp(false);
-    setShowCode10Help(false);
-    setIsSubmitting(true);
-    try {
-      await signInGoogleWeb();
-    } catch (err: any) {
-      console.error('Web Google Sign-In Error:', err);
-      if (err?.code === 'auth/unauthorized-domain' || err?.message?.includes('auth/unauthorized-domain')) {
-        setAuthError(`Domain "${window.location.hostname}" is not recognized yet by Firebase Auth.`);
-        setShowDomainHelp(true);
-      } else {
-        setAuthError(err?.message || 'Web Google Sign-in could not be completed.');
       }
     } finally {
       setIsSubmitting(false);
@@ -414,7 +393,7 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                     {showCode10Help && (
                       <div className="pt-2.5 border-t border-rose-900/60 space-y-2.5 text-[11px] text-slate-200">
                         <p className="font-bold text-amber-300 flex items-center gap-1.5">
-                          <span>Why Code 10 occurs (SHA-1 is saved in Firebase):</span>
+                          <span>Configuration resolution for Code 10:</span>
                         </p>
 
                         <div className="space-y-2 bg-black/50 p-2.5 rounded-xl border border-amber-500/30 text-slate-300">
@@ -424,37 +403,20 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
 
                           <div className="space-y-2 text-[10px] pt-1">
                             <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-700">
-                              <strong className="text-white block text-[11px]">1. Enable Google Sign-In Provider in Firebase</strong>
+                              <strong className="text-white block text-[11px]">1. Enable Google Sign-In in Firebase Console</strong>
                               <p className="text-slate-300 mt-0.5">
-                                Go to Firebase Console &gt; <strong>Authentication</strong> &gt; <strong>Sign-in method</strong> &gt; Click <strong>Google</strong> &gt; Toggle <strong>Enable</strong> &gt; Select your <strong>Project support email</strong> &gt; Click <strong>Save</strong>.
+                                Go to Firebase Console &gt; <strong>Authentication</strong> &gt; <strong>Sign-in method</strong> &gt; Click <strong>Google</strong> &gt; Toggle <strong>Enable</strong> &gt; Set your <strong>Project support email</strong> &gt; Click <strong>Save</strong>.
                               </p>
                             </div>
 
                             <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-700">
-                              <strong className="text-white block text-[11px]">2. Download updated google-services.json</strong>
+                              <strong className="text-white block text-[11px]">2. Rebuild APK with updated google-services.json</strong>
                               <p className="text-slate-300 mt-0.5">
-                                In your Firebase screenshot, click the blue <strong className="text-sky-300">Download google-services.json</strong> button at top. Replace it in your Android app folder before building your APK.
-                              </p>
-                            </div>
-
-                            <div className="bg-emerald-950/70 p-2 rounded-lg border border-emerald-500/40">
-                              <strong className="text-emerald-300 block text-[11px]">⚡ 1-Tap Solution (No Rebuild Needed):</strong>
-                              <p className="text-emerald-200/90 mt-0.5">
-                                You can sign in immediately through Google Web Auth without modifying your APK!
+                                We updated <code className="text-amber-300 font-mono">android/app/google-services.json</code> with your client credentials. Rebuild your APK using the same keystore to match your SHA-1.
                               </p>
                             </div>
                           </div>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={handleWebGoogleSignInClick}
-                          disabled={isSubmitting}
-                          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg transition"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-slate-950" />
-                          <span>Tap to Sign In with Web Google (Direct Bypass)</span>
-                        </button>
                       </div>
                     )}
                   </div>
@@ -493,17 +455,6 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                           ? 'Select Google Account from Device'
                           : 'Sign in with Google')}
                   </span>
-                </button>
-
-                {/* Alternative Web Sign-In Button */}
-                <button
-                  type="button"
-                  onClick={handleWebGoogleSignInClick}
-                  disabled={isSubmitting}
-                  className="w-full py-2.5 px-3 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white font-semibold text-xs flex items-center justify-center gap-2 transition"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Alternative: Sign In with Web Browser</span>
                 </button>
 
                 {/* Android Native Account Picker Info */}
