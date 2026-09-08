@@ -9,8 +9,6 @@ interface BottomNavProps {
   onOpenLobby: () => void;
   onOpenFriends: () => void;
   onOpenLeaderboard: () => void;
-  onOpenStats: () => void;
-  onOpenHistory: () => void;
   onOpenSettings: () => void;
   onOpenNotifications: () => void;
 }
@@ -22,8 +20,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onOpenLobby,
   onOpenFriends,
   onOpenLeaderboard,
-  onOpenStats,
-  onOpenHistory,
   onOpenSettings,
   onOpenNotifications,
 }) => {
@@ -64,7 +60,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         )}
       </button>
 
-      {/* Leaderboard */}
+      {/* Leaderboard / Rank */}
       <button
         onClick={() => {
           sounds.playButton();
@@ -78,34 +74,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       >
         <Trophy className="w-5 h-5" />
         <span className="text-[10px]">Rank</span>
-      </button>
-
-      {/* Stats */}
-      <button
-        onClick={() => {
-          sounds.playButton();
-          onOpenStats();
-        }}
-        className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition ${
-          activeModal === 'stats' ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-white'
-        }`}
-      >
-        <BarChart3 className="w-5 h-5" />
-        <span className="text-[10px]">Stats</span>
-      </button>
-
-      {/* History */}
-      <button
-        onClick={() => {
-          sounds.playButton();
-          onOpenHistory();
-        }}
-        className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition ${
-          activeModal === 'history' ? 'text-purple-400 font-bold' : 'text-slate-400 hover:text-white'
-        }`}
-      >
-        <History className="w-5 h-5" />
-        <span className="text-[10px]">History</span>
       </button>
 
       {/* Settings */}

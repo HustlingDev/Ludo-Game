@@ -295,21 +295,11 @@ interface LobbyOnlineUser {
 
 const onlineLobbyUsers = new Map<string, LobbyOnlineUser>();
 
-// Seed default online players
-const SEED_PLAYERS: LobbyOnlineUser[] = [
-  { id: 'ply_kato', name: 'Kato Derrick', avatar: '👑', rating: 1420, status: 'available', country: 'UG', lastSeen: Date.now() },
-  { id: 'ply_namubiru', name: 'Sarah Namubiru', avatar: '⚡', rating: 1350, status: 'available', country: 'UG', lastSeen: Date.now() },
-  { id: 'ply_mukasa', name: 'Brian Mukasa', avatar: '🐉', rating: 1280, status: 'available', country: 'UG', lastSeen: Date.now() },
-  { id: 'ply_amina', name: 'Zainab Amina', avatar: '💎', rating: 1390, status: 'available', country: 'UG', lastSeen: Date.now() },
-  { id: 'ply_okello', name: 'John Okello', avatar: '🦁', rating: 1210, status: 'available', country: 'UG', lastSeen: Date.now() },
-  { id: 'ply_nabulime', name: 'Joy Nabulime', avatar: '🔥', rating: 1310, status: 'available', country: 'UG', lastSeen: Date.now() },
-];
-SEED_PLAYERS.forEach((p) => onlineLobbyUsers.set(p.id, p));
-
 router.get('/lobby/players', (req: Request, res: Response) => {
   const now = Date.now();
+  // Prune stale heartbeats after 60 seconds for real-time accuracy
   Array.from(onlineLobbyUsers.entries()).forEach(([id, user]) => {
-    if (!id.startsWith('ply_') && now - user.lastSeen > 120000) {
+    if (now - user.lastSeen > 60000) {
       onlineLobbyUsers.delete(id);
     }
   });

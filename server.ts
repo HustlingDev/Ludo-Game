@@ -380,7 +380,7 @@ async function startServer() {
       opponentName,
       opponent?.avatar || '🎯',
       opponentColor,
-      toPlayerId.startsWith('ply_') ? 'bot' : 'human',
+      'human',
       'medium',
       false
     );

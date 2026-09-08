@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLudoGame } from './hooks/useLudoGame';
 import { useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
@@ -16,8 +16,6 @@ import { VictoryModal } from './components/VictoryModal';
 import { ChatAndReactions } from './components/ChatAndReactions';
 import { SettingsModal } from './components/SettingsModal';
 import { FriendsModal } from './components/FriendsModal';
-import { StatsModal } from './components/StatsModal';
-import { HistoryModal } from './components/HistoryModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { WalletModal } from './components/WalletModal';
@@ -25,6 +23,8 @@ import { AuthModal } from './components/AuthModal';
 import { MainLobbyView } from './components/MainLobbyView';
 import { BottomNav } from './components/BottomNav';
 import { GoogleAuthBottomSheet } from './components/GoogleAuthBottomSheet';
+import { SplashScreen } from './components/SplashScreen';
+import { initializeCleanRealtimeData } from './utils/cleanupDummyData';
 import { ErrorToast } from './components/ErrorToast';
 import { COLOR_CONFIG } from './utils/boardCoordinates';
 import {
@@ -95,6 +95,13 @@ export default function App() {
     isAuthenticated,
     isProfileComplete,
   } = useAuth();
+
+  const [showSplash, setShowSplash] = useState(true);
+
+  // Initialize clean real-time data on boot (wiping legacy dummy records and applying welcome bonus)
+  useEffect(() => {
+    initializeCleanRealtimeData();
+  }, []);
 
   // Sync auth profile to game profile
   useEffect(() => {
@@ -169,8 +176,6 @@ export default function App() {
         onOpenLobby={() => handleExitToLobby()}
         onOpenFriends={() => setActiveModal('friends')}
         onOpenLeaderboard={() => setActiveModal('leaderboard')}
-        onOpenStats={() => setActiveModal('stats')}
-        onOpenHistory={() => setActiveModal('history')}
         onOpenSettings={() => setActiveModal('settings')}
         onOpenNotifications={() => setActiveModal('notifications')}
         onOpenWallet={() => setActiveModal('wallet')}
@@ -521,8 +526,6 @@ export default function App() {
           onOpenLobby={() => handleExitToLobby()}
           onOpenFriends={() => setActiveModal('friends')}
           onOpenLeaderboard={() => setActiveModal('leaderboard')}
-          onOpenStats={() => setActiveModal('stats')}
-          onOpenHistory={() => setActiveModal('history')}
           onOpenSettings={() => setActiveModal('settings')}
           onOpenNotifications={() => setActiveModal('notifications')}
         />
@@ -568,20 +571,6 @@ export default function App() {
         onInviteFriendToGame={handleInviteFriendToGame}
       />
 
-      <StatsModal
-        isOpen={activeModal === 'stats'}
-        onClose={() => setActiveModal(null)}
-        stats={stats}
-        userName={profile.name}
-        avatar={profile.avatar}
-      />
-
-      <HistoryModal
-        isOpen={activeModal === 'history'}
-        onClose={() => setActiveModal(null)}
-        history={history}
-      />
-
       <LeaderboardModal
         isOpen={activeModal === 'leaderboard'}
         onClose={() => setActiveModal(null)}
@@ -625,6 +614,9 @@ export default function App() {
         isOpen={activeModal === 'auth'}
         onClose={() => setActiveModal(null)}
       />
+
+      {/* Startup Splash Screen with "Win real Cash" and Welcome Bonus */}
+      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
     </div>
   );
 }

@@ -56,7 +56,7 @@ interface MainLobbyViewProps {
   onOpenWallet: () => void;
   onOpenLeaderboard: () => void;
   onOpenRules: () => void;
-  onOpenStats: () => void;
+  onOpenStats?: () => void;
 }
 
 interface OnlinePlayer {
@@ -179,11 +179,10 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
               <span className="text-xs sm:text-sm font-black text-white font-mono lowercase">
                 @{profile.name}
               </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                ⭐ {userRating}
-              </span>
             </div>
-            <span className="text-[10px] text-slate-400 font-medium">Ludo Arena Champion</span>
+            <span className="text-[10px] sm:text-[11px] font-black text-amber-400 tracking-wider uppercase block mt-0.5">
+              Win real Cash
+            </span>
           </div>
         </div>
 

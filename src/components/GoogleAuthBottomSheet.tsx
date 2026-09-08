@@ -275,38 +275,16 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
               /* STEP 1: Official Google Sign Up / Sign In */
               <div className="space-y-4">
                 <div className="text-center py-2 space-y-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-[11px] font-black text-amber-400">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Real-Money Skill Challenges • UGX Payouts</span>
+                  <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-950/80 border border-emerald-500/40 rounded-full text-xs font-bold text-emerald-300 shadow">
+                    <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Welcome Bonus: 200 UGX on join</span>
                   </div>
                   <h3 className="text-base sm:text-lg font-black text-white">
                     Sign up with your Google Account
                   </h3>
                   <p className="text-xs text-slate-300 max-w-xs mx-auto">
-                    Authenticate securely with your Google profile to enter live matches and claim UGX prize earnings.
+                    Choose your Google account to play live matches and win real cash.
                   </p>
-                </div>
-
-                {/* Trust and Feature Bullets */}
-                <div className="grid grid-cols-1 gap-2 bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
-                  <div className="flex items-center gap-2.5 text-xs text-slate-300">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Secure Google OAuth 2.0 verified authentication</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-300">
-                    <div className="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
-                      <Zap className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Instant MTN & Airtel Mobile Money cash withdrawals</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-300">
-                    <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                      <Trophy className="w-3.5 h-3.5" />
-                    </div>
-                    <span>1v1 and 4-Player multiplayer rooms with live stakes</span>
-                  </div>
                 </div>
 
                 {/* Error Banner & Domain Diagnostics */}
@@ -432,21 +410,11 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                   </span>
                 </button>
 
-                {/* Android Native Account Picker Info or Web Redirect */}
-                {typeof (window as any).AndroidApp?.signInWithGoogle === 'function' ? (
+                {/* Android Native Account Picker Info */}
+                {typeof (window as any).AndroidApp?.signInWithGoogle === 'function' && (
                   <p className="text-[11px] text-center text-emerald-400 font-medium bg-emerald-950/40 p-2 rounded-xl border border-emerald-800/40">
                     Your phone's Google Accounts list will open. Choose any of your accounts to sign in instantly.
                   </p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleGoogleSignInRedirectClick}
-                    disabled={isSubmitting}
-                    className="w-full py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-700 transition"
-                  >
-                    <Smartphone className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Mobile Redirect Sign In (Alternative)</span>
-                  </button>
                 )}
 
                 <p className="text-[11px] text-center text-slate-500">

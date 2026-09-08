@@ -36,8 +36,8 @@ interface HeaderProps {
   onOpenLobby: () => void;
   onOpenFriends: () => void;
   onOpenLeaderboard: () => void;
-  onOpenStats: () => void;
-  onOpenHistory: () => void;
+  onOpenStats?: () => void;
+  onOpenHistory?: () => void;
   onOpenSettings: () => void;
   onOpenNotifications: () => void;
   onOpenWallet?: () => void;
@@ -97,23 +97,24 @@ export const Header: React.FC<HeaderProps> = ({
           }}
           className="flex items-center gap-2 hover:opacity-90 transition group"
         >
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-500 via-amber-400 to-sky-500 p-0.5 shadow-md">
-            <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center text-sm font-black text-amber-400">
-              🎲
-            </div>
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden shadow-md border border-amber-400/40 shrink-0 bg-slate-900 flex items-center justify-center">
+            <img
+              src="/icon.png"
+              alt="Ludo Logo"
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.currentTarget as HTMLElement).style.display = 'none';
+              }}
+            />
+            <div className="text-sm font-black text-amber-400">🎲</div>
           </div>
-          <div className="text-left hidden xs:block">
-            <h1 className="text-xs sm:text-sm font-black text-white leading-tight flex items-center gap-1.5">
+          <div className="text-left">
+            <h1 className="text-xs sm:text-sm font-black text-white leading-none flex items-center gap-1.5">
               <span>Ludo Royale</span>
             </h1>
-            <span className="text-[10px] text-slate-400 font-medium">
-              {gameState.status === 'lobby'
-                ? 'Main Lobby'
-                : gameState.mode === 'online_multiplayer'
-                ? 'Online Room'
-                : gameState.mode === 'local_vs_bot'
-                ? 'Vs AI Bots'
-                : 'Pass & Play'}
+            <span className="text-[10px] sm:text-[11px] font-black text-amber-400 tracking-wider uppercase block mt-0.5">
+              Win real Cash
             </span>
           </div>
         </button>
@@ -131,18 +132,6 @@ export const Header: React.FC<HeaderProps> = ({
             🏠 Exit Match
           </button>
         )}
-
-        {/* User ELO Rating Pill */}
-        <button
-          onClick={() => {
-            sounds.playButton();
-            onOpenStats();
-          }}
-          className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-950/40 border border-amber-500/40 hover:bg-amber-900/40 transition text-xs"
-        >
-          <span className="text-[11px] text-slate-300 font-bold">{userName}</span>
-          <span className="font-mono font-black text-amber-400">⭐ {userRating}</span>
-        </button>
 
         {/* Room Code Badge (Online Mode) */}
         {gameState.mode === 'online_multiplayer' && gameState.roomId && (
