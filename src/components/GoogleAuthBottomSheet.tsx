@@ -18,12 +18,12 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { TermsOfServiceModal } from './TermsOfServiceModal';
 
+import { AvatarSelector, AvatarDisplay, normalizeAvatarKey } from './AvatarIllustrations';
+
 interface GoogleAuthBottomSheetProps {
   isOpen: boolean;
   onSuccess?: () => void;
 }
-
-const AVATAR_OPTIONS = ['👑', '⚡', '🐉', '🦁', '🚀', '🎯', '🔥', '💎', '🦊', '🐼', '🤖', '🎲'];
 
 export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
   isOpen,
@@ -40,7 +40,7 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
   } = useAuth();
 
   // Profile Form state
-  const [avatar, setAvatar] = useState<string>('👑');
+  const [avatar, setAvatar] = useState<string>('avatar_braids');
   const [username, setUsername] = useState<string>('');
   const [usernameError, setUsernameError] = useState<string>('');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
@@ -459,28 +459,12 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                   </button>
                 </div>
 
-                {/* 1. Choose Avatar */}
+                {/* 1. Choose Avatar Matching Screenshot */}
                 <div>
-                  <label className="block text-xs font-black text-slate-300 mb-1.5 flex items-center justify-between">
-                    <span>1. Choose Match Avatar:</span>
-                    <span className="text-xl">{avatar}</span>
-                  </label>
-                  <div className="grid grid-cols-6 gap-2">
-                    {AVATAR_OPTIONS.map((av) => (
-                      <button
-                        type="button"
-                        key={av}
-                        onClick={() => setAvatar(av)}
-                        className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl text-xl flex items-center justify-center transition ${
-                          avatar === av
-                            ? 'bg-amber-500 border-2 border-amber-300 scale-105 shadow-md'
-                            : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300'
-                        }`}
-                      >
-                        {av}
-                      </button>
-                    ))}
-                  </div>
+                  <AvatarSelector
+                    selectedAvatar={avatar}
+                    onSelect={(av) => setAvatar(av)}
+                  />
                 </div>
 
                 {/* 2. Username (Only lowercase letters, no numbers) */}

@@ -288,6 +288,8 @@ interface LobbyOnlineUser {
   name: string;
   avatar: string;
   rating: number;
+  stake?: number;
+  playerCount?: number;
   status: 'available' | 'in_game';
   country: string;
   lastSeen: number;
@@ -297,9 +299,9 @@ const onlineLobbyUsers = new Map<string, LobbyOnlineUser>();
 
 router.get('/lobby/players', (req: Request, res: Response) => {
   const now = Date.now();
-  // Prune stale heartbeats after 60 seconds for real-time accuracy
+  // Prune stale heartbeats after 25 seconds for strictly real-time accuracy
   Array.from(onlineLobbyUsers.entries()).forEach(([id, user]) => {
-    if (now - user.lastSeen > 60000) {
+    if (now - user.lastSeen > 25000) {
       onlineLobbyUsers.delete(id);
     }
   });
@@ -308,23 +310,36 @@ router.get('/lobby/players', (req: Request, res: Response) => {
     ...p,
     isOnline: true,
   }));
-  res.json({ players: playersList });
+  res.json({
+    players: playersList,
+    totalOnline: playersList.length,
+  });
 });
 
 router.post('/lobby/heartbeat', (req: Request, res: Response) => {
-  const { id, name, avatar, rating, status } = req.body || {};
-  if (!name) return res.status(400).json({ error: 'Name is required' });
-  const userId = id || `usr_${String(name).toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+  const { id, name, avatar, rating, status, stake, playerCount } = req.body || {};
+  if (!name && !id) return res.status(400).json({ error: 'Identifier required' });
+  const userId = id || `usr_${String(name || 'guest').toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
   onlineLobbyUsers.set(userId, {
     id: userId,
-    name,
-    avatar: avatar || '👑',
+    name: name || 'Player',
+    avatar: avatar || 'avatar_braids',
     rating: rating || 1200,
+    stake: stake ? Number(stake) : undefined,
+    playerCount: playerCount ? Number(playerCount) : undefined,
     status: status || 'available',
     country: 'UG',
     lastSeen: Date.now(),
   });
-  res.json({ success: true, userId });
+  res.json({ success: true, userId, totalOnline: onlineLobbyUsers.size });
+});
+
+router.post('/lobby/leave', (req: Request, res: Response) => {
+  const { id } = req.body || {};
+  if (id) {
+    onlineLobbyUsers.delete(id);
+  }
+  res.json({ success: true, totalOnline: onlineLobbyUsers.size });
 });
 
 router.post('/challenges/send', (req: Request, res: Response) => {

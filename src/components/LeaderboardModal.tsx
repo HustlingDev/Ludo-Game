@@ -13,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { sounds } from '../utils/audio';
+import { AvatarDisplay } from './AvatarIllustrations';
 
 interface LeaderboardModalProps {
   isOpen: boolean;
@@ -159,7 +160,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           <div className="py-3 px-2 grid grid-cols-3 gap-2 text-center items-end border-b border-slate-800/80">
             {/* Rank 2 */}
             <div className="p-2.5 rounded-2xl bg-slate-950/80 border border-slate-700 flex flex-col items-center">
-              <div className="text-xl">{sortedEntries[1].avatar}</div>
+              <AvatarDisplay avatar={sortedEntries[1].avatar} size="md" />
               <div className="font-bold text-xs text-white truncate max-w-full mt-1">
                 {sortedEntries[1].name}
               </div>
@@ -174,7 +175,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             {/* Rank 1 (Tallest) */}
             <div className="p-3 rounded-2xl bg-amber-950/40 border-2 border-amber-400 flex flex-col items-center shadow-lg relative -top-1">
               <Crown className="w-4 h-4 text-amber-400 fill-amber-400 mb-1" />
-              <div className="text-2xl">{sortedEntries[0].avatar}</div>
+              <AvatarDisplay avatar={sortedEntries[0].avatar} size="lg" />
               <div className="font-bold text-xs text-white truncate max-w-full mt-1">
                 {sortedEntries[0].name}
               </div>
@@ -188,7 +189,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
             {/* Rank 3 */}
             <div className="p-2.5 rounded-2xl bg-slate-950/80 border border-slate-700 flex flex-col items-center">
-              <div className="text-xl">{sortedEntries[2].avatar}</div>
+              <AvatarDisplay avatar={sortedEntries[2].avatar} size="md" />
               <div className="font-bold text-xs text-white truncate max-w-full mt-1">
                 {sortedEntries[2].name}
               </div>
@@ -229,9 +230,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   <div className="flex items-center gap-3 min-w-0">
                     {getRankBadge(rank)}
 
-                    <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sm shrink-0">
-                      {entry.avatar}
-                    </div>
+                    <AvatarDisplay avatar={entry.avatar} size="sm" />
 
                     <div className="min-w-0">
                       <div className="font-bold text-xs sm:text-sm text-white truncate flex items-center gap-1.5">

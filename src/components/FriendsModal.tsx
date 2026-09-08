@@ -15,6 +15,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { sounds } from '../utils/audio';
+import { AvatarDisplay } from './AvatarIllustrations';
 
 interface FriendsModalProps {
   isOpen: boolean;
@@ -185,11 +186,8 @@ export const FriendsModal: React.FC<FriendsModalProps> = ({
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         {/* Avatar */}
-                        <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center text-lg border border-white/20 relative shrink-0"
-                          style={{ backgroundColor: cfg.accentHex }}
-                        >
-                          {f.avatar}
+                        <div className="relative shrink-0">
+                          <AvatarDisplay avatar={f.avatar} size="md" />
                           <div
                             className={`w-3 h-3 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-slate-900 ${
                               f.status === 'online'

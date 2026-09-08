@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles, Zap, Trophy, ShieldCheck } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -93,12 +93,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               Win real Cash
             </span>
           </div>
-        </div>
-
-        {/* Welcome Bonus Notice */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-xs font-bold text-emerald-300 shadow">
-          <Zap className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Welcome Bonus: 200 UGX</span>
         </div>
       </div>
 

@@ -51,7 +51,7 @@ export interface UserProfile {
 
 const DEFAULT_PROFILE: UserProfile = {
   name: 'player',
-  avatar: '👑',
+  avatar: 'avatar_braids',
   preferredColor: 'red',
   rating: 1200,
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { Player, PlayerColor } from '../types';
 import { COLOR_CONFIG } from '../utils/boardCoordinates';
 import { Bot, Wifi, WifiOff, Trophy, Crown } from 'lucide-react';
+import { AvatarDisplay } from './AvatarIllustrations';
 
 interface PlayerCardProps {
   player?: Player;
@@ -66,11 +67,8 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative">
             {/* Avatar circle */}
-            <div
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center text-xl shadow-md border-2 border-white/20"
-              style={{ backgroundColor: config.accentHex }}
-            >
-              {player.avatar}
+            <div className="flex items-center justify-center shadow-md">
+              <AvatarDisplay avatar={player.avatar} size="md" />
             </div>
 
             {/* Rank badge if won */}

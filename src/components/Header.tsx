@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { sounds } from '../utils/audio';
 import { useAuth } from '../context/AuthContext';
+import { usePresence } from '../context/PresenceContext';
+import { AvatarDisplay } from './AvatarIllustrations';
 
 interface HeaderProps {
   gameState: GameState;
@@ -71,6 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const { user, wallet, userProfile } = useAuth();
+  const { totalOnline } = usePresence();
 
   const isInGame = gameState.status === 'playing' || gameState.status === 'paused';
 
@@ -157,6 +160,17 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Action Controls */}
       <div className="flex items-center gap-1 sm:gap-1.5">
+        {/* Real Number of Online Players */}
+        <div
+          className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-400 font-bold text-[11px] sm:text-xs shadow-inner shrink-0"
+          title="Live active players currently connected to the game"
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+          <span>
+            {totalOnline} {totalOnline === 1 ? 'Player' : 'Players'} Online
+          </span>
+        </div>
+
         {/* UGX Wallet Button */}
         <button
           onClick={() => {
@@ -172,16 +186,16 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </button>
 
-        {/* User Account / Sign In */}
+        {/* User Account / Profile Avatar */}
         <button
           onClick={() => {
             sounds.playButton();
             onOpenAuth?.();
           }}
-          className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 transition"
-          title={user ? 'User Profile' : 'Sign In / Register'}
+          className="p-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center justify-center shrink-0"
+          title={user ? 'User Profile & Avatar' : 'Sign In / Register'}
         >
-          <User className="w-4 h-4" />
+          <AvatarDisplay avatar={userProfile?.avatar || 'avatar_braids'} size="sm" />
         </button>
 
         {/* Template Selector */}

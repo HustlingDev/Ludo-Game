@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 displayName: currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'Player'),
                 email: currentUser.email || undefined,
                 phone: currentUser.phoneNumber || undefined,
-                avatar: '👑',
+                avatar: 'avatar_braids',
                 level: 1,
                 xp: 0,
                 rating: 1200,

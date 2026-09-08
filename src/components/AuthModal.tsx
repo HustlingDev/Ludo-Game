@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { User, Smartphone, ShieldCheck, X, Sparkles, Check, AlertCircle } from 'lucide-react';
+import { AvatarSelector } from './AvatarIllustrations';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const AVATAR_OPTIONS = ['👑', '⚡', '🐉', '🦁', '🚀', '🎯', '🔥', '💎', '🦊', '🐼', '🤖', '🎲'];
-
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const { userProfile, updateUserProfile, signInGoogle, signOut } = useAuth();
 
-  const [avatar, setAvatar] = useState(userProfile?.avatar || '👑');
+  const [avatar, setAvatar] = useState(userProfile?.avatar || 'avatar_braids');
   const [username, setUsername] = useState(userProfile?.username || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
   const [usernameError, setUsernameError] = useState('');
@@ -78,28 +77,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
         {userProfile ? (
           <form onSubmit={handleSave} className="space-y-4">
-            {/* Avatar Selector */}
-            <div>
-              <label className="block text-xs font-black text-slate-300 mb-1.5 flex items-center justify-between">
-                <span>Player Avatar</span>
-                <span className="text-xl">{avatar}</span>
-              </label>
-              <div className="grid grid-cols-6 gap-1.5">
-                {AVATAR_OPTIONS.map((av) => (
-                  <button
-                    type="button"
-                    key={av}
-                    onClick={() => setAvatar(av)}
-                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-lg flex items-center justify-center transition ${
-                      avatar === av
-                        ? 'bg-amber-500 border border-amber-300 scale-105 shadow'
-                        : 'bg-slate-800 hover:bg-slate-700 border border-slate-700'
-                    }`}
-                  >
-                    {av}
-                  </button>
-                ))}
-              </div>
+            {/* Avatar Selector matching screenshot */}
+            <div className="mb-2">
+              <AvatarSelector
+                selectedAvatar={avatar}
+                onSelect={(av) => setAvatar(av)}
+              />
             </div>
 
             {/* Username (Only lowercase letters, no numbers) */}

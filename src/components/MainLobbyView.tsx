@@ -25,6 +25,8 @@ import {
   DiceSkin,
 } from '../types/platform';
 import { TermsOfServiceModal } from './TermsOfServiceModal';
+import { usePresence } from '../context/PresenceContext';
+import { AvatarDisplay } from './AvatarIllustrations';
 
 interface MainLobbyViewProps {
   profile: UserProfile;
@@ -77,55 +79,26 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
   onJoinOnlineRoom,
   onOpenWallet,
 }) => {
-  // Navigation: activeStakeRoom is null when viewing all stake cards, or a number (200, 500, etc.) when inside
+  const { totalOnline, onlinePlayers, refreshPresence, updateCurrentStake } = usePresence();
   const [activeStakeRoom, setActiveStakeRoom] = useState<number | null>(null);
   const [playerCount, setPlayerCount] = useState<2 | 3 | 4>(2);
   const [joinCode, setJoinCode] = useState('');
-  const [onlinePlayers, setOnlinePlayers] = useState<OnlinePlayer[]>([]);
   const [isFetchingPlayers, setIsFetchingPlayers] = useState(false);
   const [challengingPlayerId, setChallengingPlayerId] = useState<string | null>(null);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
-  // Poll online players in the same stake tier & announce heartbeat
+  useEffect(() => {
+    updateCurrentStake(activeStakeRoom, playerCount);
+  }, [activeStakeRoom, playerCount, updateCurrentStake]);
+
   const fetchStakePlayers = async () => {
     setIsFetchingPlayers(true);
     try {
-      if (activeStakeRoom) {
-        await fetch('/api/lobby/heartbeat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: `usr_${profile.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-            name: profile.name,
-            avatar: profile.avatar,
-            rating: userRating,
-            stake: activeStakeRoom,
-            playerCount,
-            status: 'available',
-          }),
-        });
-      }
-
-      const res = await fetch('/api/lobby/players');
-      const data = await res.json();
-      if (data && data.players) {
-        const others = (data.players as OnlinePlayer[]).filter(
-          (p) => p.name !== profile.name
-        );
-        setOnlinePlayers(others);
-      }
-    } catch {
-      // Fallback
+      await refreshPresence();
     } finally {
       setIsFetchingPlayers(false);
     }
   };
-
-  useEffect(() => {
-    fetchStakePlayers();
-    const interval = setInterval(fetchStakePlayers, 4000);
-    return () => clearInterval(interval);
-  }, [profile.name, activeStakeRoom, playerCount, userRating]);
 
   const handleLaunchGame = (stake: number) => {
     if (userBalanceUGX < stake) {
@@ -171,9 +144,7 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
       {/* Top Bar: Player Profile & Quick Balance */}
       <div className="w-full shrink-0 bg-slate-900/90 border border-slate-800 rounded-2xl px-3 py-2 flex items-center justify-between gap-2 shadow-md">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl shadow-inner">
-            {profile.avatar}
-          </div>
+          <AvatarDisplay avatar={profile.avatar} size="md" />
           <div>
             <div className="flex items-center gap-1.5 leading-none">
               <span className="text-xs sm:text-sm font-black text-white font-mono lowercase">
@@ -231,9 +202,12 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
                 Choose a stake card below to enter that room, view active players, and duel
               </p>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/20">
-              <Radio className="w-3 h-3 animate-pulse" />
-              <span>UGX Real-Money Matches</span>
+            <div
+              className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-950/70 px-3 py-1.5 rounded-xl border border-emerald-500/40 shadow-sm"
+              title="Real-time connected online players"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+              <span>{totalOnline} {totalOnline === 1 ? 'Player' : 'Players'} Online</span>
             </div>
           </div>
 
@@ -450,9 +424,7 @@ export const MainLobbyView: React.FC<MainLobbyViewProps> = ({
                     className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-between hover:border-amber-500/40 transition group"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-base shadow-inner">
-                        {player.avatar}
-                      </div>
+                      <AvatarDisplay avatar={player.avatar} size="sm" />
                       <div>
                         <div className="font-bold text-xs text-white group-hover:text-amber-400 transition font-mono lowercase">
                           @{player.name}

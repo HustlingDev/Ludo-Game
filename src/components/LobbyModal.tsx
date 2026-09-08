@@ -48,7 +48,12 @@ interface LobbyModalProps {
   ) => void;
 }
 
-const AVATARS = ['👑', '⚡', '🐉', '🦁', '🚀', '🎯', '🔥', '💎', '🦊', '🐼', '🤖', '🎲'];
+import {
+  AVATAR_OPTIONS,
+  AvatarDisplay,
+  normalizeAvatarKey,
+} from './AvatarIllustrations';
+
 const ALL_COLORS: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
 
 export const LobbyModal: React.FC<LobbyModalProps> = ({
@@ -107,10 +112,10 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
         };
       }
       const botNames = ['CyberBot', 'RoboPro', 'StarAI', 'LudoMaster'];
-      const botAvatars = ['🤖', '⚡', '🛸', '👾'];
+      const botAvatars = ['avatar_braids', 'avatar_headwrap', 'avatar_beard', 'avatar_shades'];
       return {
         name: botNames[idx] || `Bot ${color.toUpperCase()}`,
-        avatar: botAvatars[idx] || '🤖',
+        avatar: botAvatars[idx] || 'avatar_braids',
         color,
         type: 'bot' as const,
         botDifficulty,
@@ -124,7 +129,7 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
     const chosenColors = ALL_COLORS.slice(0, localPlayerCount);
     const configs = chosenColors.map((color, idx) => ({
       name: localPlayerNames[idx] || `Player ${idx + 1}`,
-      avatar: AVATARS[idx % AVATARS.length],
+      avatar: AVATAR_OPTIONS[idx % AVATAR_OPTIONS.length].id,
       color,
       type: 'human' as const,
     }));
@@ -185,9 +190,7 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
         <div className="my-4 p-3 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="relative group">
-              <div className="w-11 h-11 rounded-xl bg-slate-700 flex items-center justify-center text-2xl border-2 border-amber-400/40">
-                {profile.avatar}
-              </div>
+              <AvatarDisplay avatar={profile.avatar} size="lg" />
             </div>
             <div>
               <label className="block text-[10px] uppercase font-bold text-slate-400">
@@ -205,18 +208,19 @@ export const LobbyModal: React.FC<LobbyModalProps> = ({
 
           {/* Avatar & Color Pickers */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              {['👑', '⚡', '🚀', '🔥', '🦁', '🐉'].map((av) => (
+            <div className="flex items-center gap-1.5">
+              {AVATAR_OPTIONS.map((opt) => (
                 <button
-                  key={av}
-                  onClick={() => setProfile({ ...profile, avatar: av })}
-                  className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-all ${
-                    profile.avatar === av
-                      ? 'bg-amber-400/30 border border-amber-400 scale-110'
-                      : 'hover:bg-slate-700'
+                  key={opt.id}
+                  onClick={() => setProfile({ ...profile, avatar: opt.id })}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                    normalizeAvatarKey(profile.avatar) === opt.id
+                      ? 'ring-2 ring-amber-400 scale-110 shadow-md'
+                      : 'opacity-70 hover:opacity-100 hover:scale-105'
                   }`}
+                  title={opt.label}
                 >
-                  {av}
+                  <AvatarDisplay avatar={opt.id} size="sm" />
                 </button>
               ))}
             </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { GameState, PlayerColor } from '../types';
 import { COLOR_CONFIG } from '../utils/boardCoordinates';
 import { Trophy, Crown, RotateCcw, Home, Sparkles } from 'lucide-react';
+import { AvatarDisplay } from './AvatarIllustrations';
 
 interface VictoryModalProps {
   gameState: GameState;
@@ -67,12 +68,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{medals[idx]}</span>
-                  <div
-                    className="w-7 h-7 rounded-lg text-sm flex items-center justify-center border border-white/20"
-                    style={{ backgroundColor: cfg.accentHex }}
-                  >
-                    {player.avatar}
-                  </div>
+                  <AvatarDisplay avatar={player.avatar} size="sm" />
                   <div className="text-left">
                     <div className="font-bold text-xs sm:text-sm text-white">{player.name}</div>
                     <div className="text-[10px] capitalize" style={{ color: cfg.accentHex }}>
