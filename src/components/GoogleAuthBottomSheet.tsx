@@ -14,6 +14,7 @@ import {
   Trophy,
   Copy,
   Check,
+  Globe,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { TermsOfServiceModal } from './TermsOfServiceModal';
@@ -34,6 +35,7 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
     userProfile,
     signInGoogle,
     signInGoogleRedirect,
+    signInGoogleWeb,
     updateUserProfile,
     signOut,
     isProfileComplete,
@@ -195,6 +197,30 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
         setShowDomainHelp(true);
       } else {
         setAuthError(err?.message || 'Could not initiate redirect sign-in.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignInWebClick = async () => {
+    setAuthError('');
+    setShowDomainHelp(false);
+    setShowCode10Help(false);
+    setIsSubmitting(true);
+    try {
+      await signInGoogleWeb();
+    } catch (err: any) {
+      console.error('Google Web Sign-in Error:', err);
+      if (err?.code === 'auth/unauthorized-domain' || err?.message?.includes('auth/unauthorized-domain')) {
+        setAuthError(
+          `Domain "${window.location.hostname}" is not recognized yet by Firebase Auth.`
+        );
+        setShowDomainHelp(true);
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        setAuthError('Sign in window was closed. Please try again.');
+      } else {
+        setAuthError(err?.message || 'Could not complete web Google sign-in.');
       }
     } finally {
       setIsSubmitting(false);
@@ -494,9 +520,21 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
 
                 {/* Android Native Account Picker Info */}
                 {typeof (window as any).AndroidApp?.signInWithGoogle === 'function' && (
-                  <p className="text-[11px] text-center text-emerald-400 font-medium bg-emerald-950/40 p-2 rounded-xl border border-emerald-800/40">
-                    Choose your Google account to sign in securely.
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-center text-emerald-400 font-medium bg-emerald-950/40 p-2 rounded-xl border border-emerald-800/40">
+                      Choose your Google account to sign in securely.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={handleGoogleSignInWebClick}
+                      disabled={isSubmitting}
+                      className="w-full py-2.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-2 border border-slate-700 transition"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Alternative: Sign In with Google via Web</span>
+                    </button>
+                  </div>
                 )}
 
                 <p className="text-[11px] text-center text-slate-500">
