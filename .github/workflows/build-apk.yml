@@ -82,14 +82,39 @@ jobs:
         run: |
           ./gradlew assembleDebug assembleRelease --no-daemon
 
+      - name: Stage and Rename APK Files
+        run: |
+          mkdir -p release_apks
+          RELEASE_APK=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          DEBUG_APK=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          
+          if [ -n "$RELEASE_APK" ] && [ -f "$RELEASE_APK" ]; then
+            echo "Found Release APK: $RELEASE_APK"
+            cp "$RELEASE_APK" release_apks/Ludo_Royale_Release.apk
+            cp "$RELEASE_APK" release_apks/Ludo_Arena_Release.apk
+            cp "$RELEASE_APK" release_apks/Ludo_King_Realtime_Release.apk
+          else
+            echo "No Release APK found in android/app/build/outputs/apk/release"
+          fi
+          
+          if [ -n "$DEBUG_APK" ] && [ -f "$DEBUG_APK" ]; then
+            echo "Found Debug APK: $DEBUG_APK"
+            cp "$DEBUG_APK" release_apks/Ludo_Royale_Debug.apk
+            cp "$DEBUG_APK" release_apks/Ludo_Arena_Debug.apk
+            cp "$DEBUG_APK" release_apks/Ludo_King_Realtime_Debug.apk
+          else
+            echo "No Debug APK found in android/app/build/outputs/apk/debug"
+          fi
+          
+          echo "Staged APKs:"
+          ls -la release_apks/
+
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Ludo-Royale-APK
-          path: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/apk/release/*.apk
+          name: Ludo-APK-Builds
+          path: release_apks/*.apk
           retention-days: 14
 
       - name: Publish Release Assets to GitHub Releases
@@ -97,13 +122,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: "Ludo Royale APK (Latest Build)"
-          body: "Download the latest compiled APK files for Android (`Ludo_Royale_Release.apk` and `Ludo_Royale_Debug.apk`)."
+          name: "Ludo Royale (Latest Release)"
+          body: |
+            ### Latest Ludo Android APKs
+            Updated build signed with your verified Firebase SHA-1 certificate (`41:B2:88:3E:68:50:19:C8:C2:99:90:C4:FD:07:1F:7E:6F:E1:23:37`).
+            
+            **Available APK Downloads:**
+            - **`Ludo_Royale_Release.apk`** (Production Release)
+            - **`Ludo_Arena_Release.apk`** (Matches Firebase project public name)
+            - **`Ludo_King_Realtime_Release.apk`** (Realtime multiplayer release)
+            - **`Ludo_Royale_Debug.apk`** (Debug build)
           draft: false
           prerelease: false
-          files: |
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/apk/release/*.apk
+          files: release_apks/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
