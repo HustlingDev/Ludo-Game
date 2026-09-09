@@ -75,7 +75,7 @@ export function createInitialGameState(
     winnerOrder: [],
     consecutiveSixes: 0,
     mustSelectToken: false,
-    lastMoveDescription: initialStatus === 'lobby' ? 'Welcome to Ludo Arena! Select a mode to start.' : 'Game started! Roll the dice to begin.',
+    lastMoveDescription: initialStatus === 'lobby' ? 'Welcome to Ludo Royale! Select a mode to start.' : 'Game started! Roll the dice to begin.',
   };
 }
 

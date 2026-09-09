@@ -74,7 +74,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
             userId: userProfile?.id || user?.uid || 'player',
             phone: registeredPhone,
             phoneNumber: registeredPhone,
-            description: `Ludo Arena Deposit UGX ${currentAmount.toLocaleString()}`,
+            description: `Ludo Royale Deposit UGX ${currentAmount.toLocaleString()}`,
           }),
         });
 
@@ -178,7 +178,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onOpe
             <Wallet className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-black text-white">Ludo Arena Wallet</h2>
+            <h2 className="text-lg font-black text-white">Ludo Royale Wallet</h2>
             <p className="text-xs text-slate-400">Uganda Mobile Money (MTN & Airtel)</p>
           </div>
         </div>

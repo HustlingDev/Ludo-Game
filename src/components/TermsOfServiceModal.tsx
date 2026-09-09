@@ -19,7 +19,7 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ isOpen
               <Scale className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-white">Ludo Arena Terms of Service</h2>
+              <h2 className="text-base sm:text-lg font-black text-white">Ludo Royale Terms of Service</h2>
               <p className="text-xs text-slate-400">Uganda Real-Money Skill Gaming & Fair Competition Rules</p>
             </div>
           </div>
@@ -50,7 +50,7 @@ export const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ isOpen
               1. Nature of the Game (Skill-Based Competition)
             </h3>
             <p className="text-slate-400">
-              Ludo Arena is a competitive, peer-to-peer digital board game governed by mathematical probability, spatial strategy, token risk management, and competitive decision-making. Matches are determined by player decisions and game rules, not random chance algorithms.
+              Ludo Royale is a competitive, peer-to-peer digital board game governed by mathematical probability, spatial strategy, token risk management, and competitive decision-making. Matches are determined by player decisions and game rules, not random chance algorithms.
             </p>
           </section>
 

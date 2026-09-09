@@ -147,7 +147,7 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
       ) {
         // Automatic transparent recovery if native Play Services returned code 10
         try {
-          await signInGoogleWeb();
+          await signInGoogleRedirect();
           return;
         } catch (fallbackErr: any) {
           console.error('Google fallback error:', fallbackErr);

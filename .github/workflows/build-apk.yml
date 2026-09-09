@@ -47,15 +47,21 @@ jobs:
 
       - name: Prepare Android Keystore & Print Fingerprints
         run: |
-          mkdir -p ~/.android
-          if [ -f "android/app/debug.keystore" ]; then
+          mkdir -p ~/.android android/app
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "Using keystore from GitHub Secret ANDROID_KEYSTORE_BASE64"
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
+            cp ~/.android/debug.keystore android/app/debug.keystore
+          elif [ -f "android/app/debug.keystore" ]; then
             cp android/app/debug.keystore ~/.android/debug.keystore
           elif [ ! -f ~/.android/debug.keystore ]; then
             keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
             cp ~/.android/debug.keystore android/app/debug.keystore
           fi
-          echo "=== Android Certificate Fingerprints ==="
-          keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android
+          echo "================================================================"
+          echo "=== ANDROID CERTIFICATE SHA-1 / SHA-256 FINGERPRINTS ==="
+          keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android | grep -E "SHA1|SHA256" || true
+          echo "================================================================"
 
       - name: Grant Execute Permission to Gradle Wrapper
         run: |
@@ -76,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ludo-arena-apk
+          name: Ludo-Royale-APK
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/apk/release/*.apk
@@ -87,8 +93,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: "Ludo Arena APK (Latest Build)"
-          body: "Download the latest compiled APK files for Android (`app-debug.apk` and `app-release.apk`)."
+          name: "Ludo Royale APK (Latest Build)"
+          body: "Download the latest compiled APK files for Android (`Ludo_Royale_Release.apk` and `Ludo_Royale_Debug.apk`)."
           draft: false
           prerelease: false
           files: |
