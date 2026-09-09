@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -25,7 +27,7 @@ android {
             val keystoreFile = file("debug.keystore")
             val base64File = file("debug.keystore.base64")
             if (!keystoreFile.exists() && base64File.exists()) {
-                val bytes = java.util.Base64.getDecoder().decode(base64File.readText().trim())
+                val bytes = Base64.getDecoder().decode(base64File.readText().trim())
                 keystoreFile.writeBytes(bytes)
             }
             if (keystoreFile.exists()) {
