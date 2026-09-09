@@ -359,14 +359,14 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                             
                             {/* SHA-1 */}
                             <div className="mb-1.5">
-                              <span className="text-[10px] text-sky-400 font-semibold">SHA-1:</span>
+                              <span className="text-[10px] text-sky-400 font-semibold">SHA-1 (Fixed APK Signature):</span>
                               <div className="flex items-center justify-between gap-2 mt-0.5 bg-slate-900/90 p-1.5 rounded-lg border border-slate-700">
                                 <span className="font-mono text-[10px] text-slate-200 break-all select-all">
-                                  F2:01:F2:0A:E1:5D:52:58:0B:1C:93:AE:53:1A:E2:0F:91:DC:44:04
+                                  41:B2:88:3E:68:50:19:C8:C2:99:90:C4:FD:07:1F:7E:6F:E1:23:37
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => copyToClipboard('F2:01:F2:0A:E1:5D:52:58:0B:1C:93:AE:53:1A:E2:0F:91:DC:44:04', 'sha1')}
+                                  onClick={() => copyToClipboard('41:B2:88:3E:68:50:19:C8:C2:99:90:C4:FD:07:1F:7E:6F:E1:23:37', 'sha1')}
                                   className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center gap-1 shrink-0"
                                 >
                                   {copiedKey === 'sha1' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -380,11 +380,11 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                               <span className="text-[10px] text-emerald-400 font-semibold">SHA-256:</span>
                               <div className="flex items-center justify-between gap-2 mt-0.5 bg-slate-900/90 p-1.5 rounded-lg border border-slate-700">
                                 <span className="font-mono text-[10px] text-slate-200 break-all select-all">
-                                  DF:2A:A4:13:FD:D5:E7:E7:45:81:69:07:A0:1E:A7:09:E3:FE:81:58:01:36:82:AF:61:8D:B4:84:D3:8A:59:84
+                                  67:5F:0D:39:0C:12:C4:24:87:67:48:A7:0E:71:9C:77:29:84:4A:07:BC:95:5B:CC:F2:36:08:F3:5A:B3:36:08
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => copyToClipboard('DF:2A:A4:13:FD:D5:E7:E7:45:81:69:07:A0:1E:A7:09:E3:FE:81:58:01:36:82:AF:61:8D:B4:84:D3:8A:59:84', 'sha256')}
+                                  onClick={() => copyToClipboard('67:5F:0D:39:0C:12:C4:24:87:67:48:A7:0E:71:9C:77:29:84:4A:07:BC:95:5B:CC:F2:36:08:F3:5A:B3:36:08', 'sha256')}
                                   className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center gap-1 shrink-0"
                                 >
                                   {copiedKey === 'sha256' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -449,7 +449,7 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                             <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-700">
                               <strong className="text-white block text-[11px]">3. Verify SHA-1 in Firebase Console</strong>
                               <p className="text-slate-300 mt-0.5">
-                                Firebase Console &gt; Project Settings &gt; Your apps &gt; <strong className="text-white">com.gamers.ludo</strong>. Ensure the SHA-1 matches <code className="text-amber-300 font-mono select-all">F2:01:F2:0A:E1:5D:52:58:0B:1C:93:AE:53:1A:E2:0F:91:DC:44:04</code>.
+                                Firebase Console &gt; Project Settings &gt; Your apps &gt; <strong className="text-white">com.gamers.ludo</strong>. Ensure the SHA-1 matches <code className="text-amber-300 font-mono select-all">41:B2:88:3E:68:50:19:C8:C2:99:90:C4:FD:07:1F:7E:6F:E1:23:37</code>.
                               </p>
                             </div>
                           </div>

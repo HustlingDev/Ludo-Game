@@ -22,9 +22,14 @@ android {
 
     signingConfigs {
         getByName("debug") {
-            val projectKeystore = file("debug.keystore")
-            if (projectKeystore.exists()) {
-                storeFile = projectKeystore
+            val keystoreFile = file("debug.keystore")
+            val base64File = file("debug.keystore.base64")
+            if (!keystoreFile.exists() && base64File.exists()) {
+                val bytes = java.util.Base64.getDecoder().decode(base64File.readText().trim())
+                keystoreFile.writeBytes(bytes)
+            }
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
                 storePassword = "android"
                 keyAlias = "androiddebugkey"
                 keyPassword = "android"
