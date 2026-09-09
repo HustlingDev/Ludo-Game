@@ -183,59 +183,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 1. Check if running inside our Android native app with device account picker
       const androidApp = (window as any).AndroidApp;
       if (androidApp && typeof androidApp.signInWithGoogle === 'function') {
-        let nativeSucceeded = false;
-        try {
-          await new Promise<void>((resolve, reject) => {
-            let resolved = false;
+        await new Promise<void>((resolve, reject) => {
+          let resolved = false;
 
-            (window as any).onNativeGoogleSignInSuccess = async (data: any) => {
-              if (resolved) return;
-              resolved = true;
-              try {
-                const idToken = typeof data === 'string' ? data : data?.idToken;
-                if (!idToken) {
-                  throw new Error('No Google ID token received from device.');
-                }
-                const credential = GoogleAuthProvider.credential(idToken);
-                const userCred = await signInWithCredential(auth, credential);
-                if (userCred.user) {
-                  setUser(userCred.user);
-                }
-                nativeSucceeded = true;
-                resolve();
-              } catch (err: any) {
-                console.error('Firebase signInWithCredential error:', err);
-                reject(err);
-              }
-            };
-
-            (window as any).onNativeGoogleSignInError = (errMsg: string) => {
-              if (resolved) return;
-              resolved = true;
-              console.warn('Native Google Sign-In error, triggering seamless in-app fallback:', errMsg);
-              reject(new Error(errMsg || 'Google account selection failed.'));
-            };
-
+          (window as any).onNativeGoogleSignInSuccess = async (data: any) => {
+            if (resolved) return;
+            resolved = true;
             try {
-              androidApp.signInWithGoogle();
-            } catch (launchErr: any) {
-              resolved = true;
-              console.error('Failed to trigger AndroidApp.signInWithGoogle:', launchErr);
-              reject(launchErr);
+              const idToken = typeof data === 'string' ? data : data?.idToken;
+              if (!idToken) {
+                throw new Error('No Google ID token received from device.');
+              }
+              const credential = GoogleAuthProvider.credential(idToken);
+              const userCred = await signInWithCredential(auth, credential);
+              if (userCred.user) {
+                setUser(userCred.user);
+              }
+              resolve();
+            } catch (err: any) {
+              console.error('Firebase signInWithCredential error:', err);
+              reject(err);
             }
-          });
-        } catch (nativeErr: any) {
-          const msg = nativeErr?.message || '';
-          // If user explicitly cancelled / backed out of account chooser, do not force popup
-          if (msg.includes('cancelled') || msg.includes('12501')) {
-            throw nativeErr;
-          }
-          console.warn('Native device account picker failed, automatically continuing via in-app Google Auth...', nativeErr);
-        }
+          };
 
-        if (nativeSucceeded) {
-          return;
-        }
+          (window as any).onNativeGoogleSignInError = (errMsg: string) => {
+            if (resolved) return;
+            resolved = true;
+            console.error('Native Google Sign-In error:', errMsg);
+            reject(new Error(errMsg || 'Google account selection failed.'));
+          };
+
+          try {
+            androidApp.signInWithGoogle();
+          } catch (launchErr: any) {
+            resolved = true;
+            console.error('Failed to trigger AndroidApp.signInWithGoogle:', launchErr);
+            reject(launchErr);
+          }
+        });
+        return;
       }
 
       // 2. In-App / Web Google Auth (also handles fallback if Android Play Services returned code 10)

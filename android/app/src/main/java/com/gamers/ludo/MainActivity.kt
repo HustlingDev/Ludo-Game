@@ -3,7 +3,9 @@ package com.gamers.ludo
 import android.annotation.SuppressLint
 import android.app.Dialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Message
 import android.util.Log
@@ -28,6 +30,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import org.json.JSONObject
+import java.security.MessageDigest
 
 class MainActivity : AppCompatActivity() {
 
@@ -207,18 +210,45 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: ApiException) {
                 Log.e(TAG, "Google Sign In ApiException statusCode=${e.statusCode}", e)
+                val currentSha1 = getAppCertificateSha1()
                 val message = when (e.statusCode) {
                     CommonStatusCodes.SIGN_IN_REQUIRED -> "Sign in required"
                     12501 -> "Sign-in cancelled. Please choose your Google account."
-                    12500 -> "Sign-in failed. Please verify Google Play Services is up to date."
-                    10 -> "Configuration error (code 10). Make sure SHA-1 fingerprint is registered."
-                    else -> "Sign-in error: code ${e.statusCode}"
+                    12500 -> "Sign-in failed. Please verify Google Play Services is up to date on your device."
+                    10 -> "Configuration error (Code 10).\nInstalled APK SHA-1:\n$currentSha1\n\nEnsure this SHA-1 is added in Firebase Console under Project Settings > Your apps (com.gamers.ludo) and that Project Support Email is selected under Authentication > Sign-in method > Google."
+                    else -> "Google sign-in error: code ${e.statusCode}"
                 }
                 notifyJsError(message)
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected Google Sign-in error", e)
                 notifyJsError(e.message ?: "Unknown sign-in error")
             }
+        }
+    }
+
+    private fun getAppCertificateSha1(): String {
+        return try {
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
+            }
+            val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.signingInfo?.apkContentsSigners
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.signatures
+            }
+            if (signatures != null && signatures.isNotEmpty()) {
+                val md = MessageDigest.getInstance("SHA-1")
+                val digest = md.digest(signatures[0].toByteArray())
+                digest.joinToString(":") { "%02X".format(it) }
+            } else {
+                "Not available"
+            }
+        } catch (e: Exception) {
+            "Error: ${e.message}"
         }
     }
 
@@ -263,6 +293,11 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun isNativeApp(): Boolean {
             return true
+        }
+
+        @JavascriptInterface
+        fun getSigningSha1(): String {
+            return getAppCertificateSha1()
         }
     }
 

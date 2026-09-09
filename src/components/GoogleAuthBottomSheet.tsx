@@ -52,6 +52,18 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
   const [showCode10Help, setShowCode10Help] = useState<boolean>(false);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [deviceSha1, setDeviceSha1] = useState<string>('');
+
+  useEffect(() => {
+    try {
+      const sha = (window as any).AndroidApp?.getSigningSha1?.();
+      if (sha) {
+        setDeviceSha1(sha);
+      }
+    } catch {
+      // Ignored if not running in Android wrapper
+    }
+  }, []);
 
   const copyToClipboard = (text: string, label: string) => {
     try {
@@ -141,18 +153,13 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
       const msg = err?.message || '';
       if (
         msg.includes('code 10') ||
+        msg.includes('Code 10') ||
         msg.includes('Configuration error') ||
         msg.includes('SHA-1') ||
         msg.includes('DEVELOPER_ERROR')
       ) {
-        // Automatic transparent recovery if native Play Services returned code 10
-        try {
-          await signInGoogleRedirect();
-          return;
-        } catch (fallbackErr: any) {
-          console.error('Google fallback error:', fallbackErr);
-          setAuthError(fallbackErr?.message || 'Please sign in with Google to continue.');
-        }
+        setAuthError(msg);
+        setShowCode10Help(true);
       } else if (err?.code === 'auth/unauthorized-domain' || msg.includes('auth/unauthorized-domain')) {
         setAuthError(
           `Domain "${window.location.hostname}" is not recognized yet by Firebase Auth.`
@@ -160,7 +167,7 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
         setShowDomainHelp(true);
       } else if (err?.code === 'auth/popup-closed-by-user') {
         setAuthError('Sign in window was closed. Please tap again to sign in.');
-      } else if (err?.code === 'auth/cancelled-popup-request') {
+      } else if (err?.code === 'auth/cancelled-popup-request' || msg.includes('cancelled') || msg.includes('12501')) {
         setAuthError('Sign in request was cancelled. Tap again.');
       } else if (err?.code === 'auth/popup-blocked') {
         setAuthError('Popup was blocked by your browser. Please allow popups to continue.');
@@ -355,11 +362,11 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                               <span className="text-[10px] text-sky-400 font-semibold">SHA-1:</span>
                               <div className="flex items-center justify-between gap-2 mt-0.5 bg-slate-900/90 p-1.5 rounded-lg border border-slate-700">
                                 <span className="font-mono text-[10px] text-slate-200 break-all select-all">
-                                  90:F7:30:62:52:CC:8D:BF:C5:9C:CF:E7:6D:5C:C4:E0:6A:14:AC:25
+                                  F2:01:F2:0A:E1:5D:52:58:0B:1C:93:AE:53:1A:E2:0F:91:DC:44:04
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => copyToClipboard('90:F7:30:62:52:CC:8D:BF:C5:9C:CF:E7:6D:5C:C4:E0:6A:14:AC:25', 'sha1')}
+                                  onClick={() => copyToClipboard('F2:01:F2:0A:E1:5D:52:58:0B:1C:93:AE:53:1A:E2:0F:91:DC:44:04', 'sha1')}
                                   className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center gap-1 shrink-0"
                                 >
                                   {copiedKey === 'sha1' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -373,11 +380,11 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                               <span className="text-[10px] text-emerald-400 font-semibold">SHA-256:</span>
                               <div className="flex items-center justify-between gap-2 mt-0.5 bg-slate-900/90 p-1.5 rounded-lg border border-slate-700">
                                 <span className="font-mono text-[10px] text-slate-200 break-all select-all">
-                                  86:D4:F7:45:E7:0D:D5:B5:8F:AB:7A:62:C0:BA:63:4A:3B:7A:1C:66:B2:FF:B5:04:08:9E:51:AA:B6:CF:5F:BC
+                                  DF:2A:A4:13:FD:D5:E7:E7:45:81:69:07:A0:1E:A7:09:E3:FE:81:58:01:36:82:AF:61:8D:B4:84:D3:8A:59:84
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => copyToClipboard('86:D4:F7:45:E7:0D:D5:B5:8F:AB:7A:62:C0:BA:63:4A:3B:7A:1C:66:B2:FF:B5:04:08:9E:51:AA:B6:CF:5F:BC', 'sha256')}
+                                  onClick={() => copyToClipboard('DF:2A:A4:13:FD:D5:E7:E7:45:81:69:07:A0:1E:A7:09:E3:FE:81:58:01:36:82:AF:61:8D:B4:84:D3:8A:59:84', 'sha256')}
                                   className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center gap-1 shrink-0"
                                 >
                                   {copiedKey === 'sha256' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -397,26 +404,52 @@ export const GoogleAuthBottomSheet: React.FC<GoogleAuthBottomSheetProps> = ({
                     {showCode10Help && (
                       <div className="pt-2.5 border-t border-rose-900/60 space-y-2.5 text-[11px] text-slate-200">
                         <p className="font-bold text-amber-300 flex items-center gap-1.5">
-                          <span>Configuration resolution for Code 10:</span>
+                          <span>Google Sign-In Resolution for Code 10:</span>
                         </p>
 
                         <div className="space-y-2 bg-black/50 p-2.5 rounded-xl border border-amber-500/30 text-slate-300">
+                          {deviceSha1 && (
+                            <div className="bg-emerald-950/60 border border-emerald-500/40 p-2 rounded-lg text-[11px]">
+                              <span className="text-emerald-300 font-bold block mb-1">
+                                Installed APK SHA-1 (Detected live from device):
+                              </span>
+                              <div className="flex items-center justify-between gap-1 font-mono text-[10px] text-emerald-100 bg-black/40 p-1.5 rounded">
+                                <span className="break-all select-all">{deviceSha1}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(deviceSha1, 'deviceSha1')}
+                                  className="px-2 py-0.5 rounded bg-emerald-800 hover:bg-emerald-700 text-white text-[10px] font-bold shrink-0 flex items-center gap-1"
+                                >
+                                  {copiedKey === 'deviceSha1' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                  <span>{copiedKey === 'deviceSha1' ? 'Copied' : 'Copy'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
                           <div className="text-[11px] text-amber-200 font-semibold">
-                            Google Play Services returns Code 10 (DEVELOPER_ERROR) due to one of these:
+                            Please check these 3 items to resolve Code 10:
                           </div>
 
                           <div className="space-y-2 text-[10px] pt-1">
                             <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-700">
-                              <strong className="text-white block text-[11px]">1. Enable Google Sign-In in Firebase Console</strong>
+                              <strong className="text-white block text-[11px]">1. Project Support Email (Critical)</strong>
                               <p className="text-slate-300 mt-0.5">
-                                Go to Firebase Console &gt; <strong>Authentication</strong> &gt; <strong>Sign-in method</strong> &gt; Click <strong>Google</strong> &gt; Toggle <strong>Enable</strong> &gt; Set your <strong>Project support email</strong> &gt; Click <strong>Save</strong>.
+                                Go to Firebase Console &gt; <strong>Authentication</strong> &gt; <strong>Sign-in method</strong> &gt; Click <strong>Google</strong> &gt; Ensure <strong>Project support email</strong> is selected &gt; Click <strong>Save</strong>. If support email is empty, Google blocks sign-in with Code 10.
                               </p>
                             </div>
 
                             <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-700">
-                              <strong className="text-white block text-[11px]">2. Rebuild APK with updated google-services.json</strong>
+                              <strong className="text-white block text-[11px]">2. Install the Newly Built APK</strong>
                               <p className="text-slate-300 mt-0.5">
-                                We updated <code className="text-amber-300 font-mono">android/app/google-services.json</code> with your client credentials. Rebuild your APK using the same keystore to match your SHA-1.
+                                If you are testing an older APK installed previously, uninstall it first and install the fresh APK generated from the latest GitHub build.
+                              </p>
+                            </div>
+
+                            <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-700">
+                              <strong className="text-white block text-[11px]">3. Verify SHA-1 in Firebase Console</strong>
+                              <p className="text-slate-300 mt-0.5">
+                                Firebase Console &gt; Project Settings &gt; Your apps &gt; <strong className="text-white">com.gamers.ludo</strong>. Ensure the SHA-1 matches <code className="text-amber-300 font-mono select-all">F2:01:F2:0A:E1:5D:52:58:0B:1C:93:AE:53:1A:E2:0F:91:DC:44:04</code>.
                               </p>
                             </div>
                           </div>
